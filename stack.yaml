@@ -1,0 +1,15 @@
+resolver: lts-9.0
+
+packages:
+- .
+extra-deps: []
+
+flags: {}
+
+extra-package-dbs: []
+
+nix:
+    # Not enabled by default, but if --nix is passed on the command line, then
+    # the packages line will be used by stack:
+    enable: false
+    packages: [zlib, bzip2]
