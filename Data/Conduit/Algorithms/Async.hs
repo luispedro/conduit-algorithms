@@ -12,6 +12,8 @@ module Data.Conduit.Algorithms.Async
     , asyncGzipFromFile
     ) where
 
+-- | Higher level async processing interfaces
+
 import qualified Data.ByteString as B
 import qualified Control.Concurrent.Async as A
 import qualified Control.Concurrent.STM.TBQueue as TQ
@@ -120,6 +122,8 @@ untilNothing = C.await >>= \case
     _ -> return ()
 
 -- | A simple sink which performs gzip in a separate thread and writes the results to `h`.
+--
+-- See also 'asyncGzipToFile'
 asyncGzipTo :: forall m. (MonadIO m, MonadBaseControl IO m) => Handle -> C.Sink B.ByteString m ()
 asyncGzipTo h = do
     let drain q = liftIO . C.runConduit $
@@ -133,15 +137,19 @@ asyncGzipTo h = do
 
 -- | Compresses the output and writes to the given file with compression being
 -- performed in a separate thread.
+--
+-- See also 'asyncGzipTo'
 asyncGzipToFile :: forall m. (MonadResource m, MonadBaseControl IO m) => FilePath -> C.Sink B.ByteString m ()
 asyncGzipToFile fname = C.bracketP
     (openFile fname WriteMode)
     hClose
     asyncGzipTo
 
--- | A source which ungzipped from the the given handle. Note that this "reads
--- ahead" so if you do not use all the input, the Handle will probably be left
--- at an undefined position in the file.
+-- | A source which produces the ungzipped content from the the given handle.
+-- Note that this "reads ahead" so if you do not use all the input, the Handle
+-- will probably be left at an undefined position in the file.
+--
+-- See also 'asyncGzipFromFile'
 asyncGzipFrom :: forall m. (MonadIO m, MonadResource m, MonadBaseControl IO m) => Handle -> C.Source m B.ByteString
 asyncGzipFrom h = do
     let prod q = liftIO $ do

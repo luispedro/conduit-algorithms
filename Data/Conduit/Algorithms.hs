@@ -12,6 +12,12 @@ import           Control.Monad.Trans.Class (lift)
 
 import           Data.Conduit.Algorithms.Utils (awaitJust)
 
+
+-- | Unique conduit.
+--
+-- Note that this conduit **does not** assume that the input is sorted. Instead
+-- it uses a 'Data.Set' to store previously seen elements. Thus, memory usage
+-- is O(N).
 uniqueOnC :: (Ord b, Monad m) => (a -> b) -> C.Conduit a m a
 uniqueOnC f = checkU (S.empty :: S.Set b)
     where
@@ -21,9 +27,13 @@ uniqueOnC f = checkU (S.empty :: S.Set b)
                             else do
                                 C.yield val
                                 checkU (S.insert (f val) cur)
+-- | See 'uniqueOnC'
 uniqueC :: (Ord a, Monad m) => C.Conduit a m a
 uniqueC = uniqueOnC id
 
+-- | Merge a list of sorted sources
+--
+-- See 'mergeC2'
 mergeC :: (Ord a, Monad m) => [C.Source m a] -> C.Source m a
 mergeC [] = return ()
 mergeC [s] = s
@@ -36,6 +46,9 @@ mergeC args = let (a,b) = split2 args in mergeC2 (mergeC a) (mergeC b)
         split2 [a,b] = ([a], [b])
         split2 (x:y:rs) = let (xs,ys) = split2 rs in (x:xs, y:ys)
 
+-- | Take two sorted sources and merge them.
+--
+-- See 'mergeC'
 mergeC2 :: (Ord a, Monad m) => C.Source m a -> C.Source m a -> C.Source m a
 mergeC2 s1 s2 = do
         (c1', e1) <- lift $ s1 C.$$+ CC.head

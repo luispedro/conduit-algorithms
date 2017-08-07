@@ -1,7 +1,5 @@
 {- Copyright 2013-2017 Luis Pedro Coelho
  - License: MIT -}
-{-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP #-}
-
 module Data.Conduit.Algorithms.Utils
     ( awaitJust
     , groupC
