@@ -2,8 +2,8 @@
 
 Some conduit-based algorithms.
 
-Much of this code was originally part of [ngless](http://ngless.embl.de), but
-it can be of generic use.
+Much of this code was originally part of [NGLess](http://ngless.embl.de) and
+has been in production use for years. However, it can be of generic use.
 
 License: MIT
 

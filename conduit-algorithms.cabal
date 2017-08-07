@@ -1,8 +1,9 @@
 name:               conduit-algorithms
 version:            0.0.1.0
 synopsis:           Conduit-based algorithms
-description:        Algorithms on conduit
-category:           Data
+description:        Algorithms on Conduits, including higher level asynchronous
+                    processing and some other utilities.
+category:           Conduit
 author:             Luis Pedro Coelho
 maintainer:         Luis Pedro Coelho
 license:            MIT
