@@ -1,5 +1,11 @@
-{- Copyright 2013-2017 Luis Pedro Coelho
- - License: MIT -}
+{-|
+Module      : Data.Conduit.Algorithms.Async
+Copyright   : 2013-2017 Luis Pedro Coelho
+License     : MIT
+Maintainer  : luis@luispedro.org
+
+Higher level async processing interfaces.
+-}
 {-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP #-}
 
 module Data.Conduit.Algorithms.Async
@@ -12,7 +18,6 @@ module Data.Conduit.Algorithms.Async
     , asyncGzipFromFile
     ) where
 
--- | Higher level async processing interfaces
 
 import qualified Data.ByteString as B
 import qualified Control.Concurrent.Async as A

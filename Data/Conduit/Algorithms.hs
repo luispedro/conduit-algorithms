@@ -1,8 +1,19 @@
+{-|
+Module      : Data.Conduit.Algorithms
+Copyright   : 2013-2017 Luis Pedro Coelho
+License     : MIT
+Maintainer  : luis@luispedro.org
+
+Simple algorithms packaged as Conduits
+-}
+
+
 {-# LANGUAGE Rank2Types #-}
 module Data.Conduit.Algorithms
     ( uniqueOnC
     , uniqueC
     , mergeC
+    , mergeC2
     ) where
 
 import qualified Data.Conduit as C

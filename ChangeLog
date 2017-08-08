@@ -1,3 +1,6 @@
+Version 0.0.1.0+git
+	* Fix haddock code generation. Export mergeC2
+
 Version 0.0.1.0 2017-08-07 by luispedro
 	* First version. Generic code from NGLess and internal projects, extracted
 	for wider convenience

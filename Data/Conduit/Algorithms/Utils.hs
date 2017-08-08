@@ -1,5 +1,11 @@
-{- Copyright 2013-2017 Luis Pedro Coelho
- - License: MIT -}
+{-|
+Module      : Data.Conduit.Algorithms.Utils
+Copyright   : 2013-2017 Luis Pedro Coelho
+License     : MIT
+Maintainer  : luis@luispedro.org
+
+A few miscellaneous set of conduit utilities
+-}
 module Data.Conduit.Algorithms.Utils
     ( awaitJust
     , groupC
