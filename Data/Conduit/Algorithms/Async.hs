@@ -50,16 +50,31 @@ import           Data.Conduit.Algorithms.Utils (awaitJust)
 
 
 
--- | This is like Data.Conduit.List.map, except that each element is processed
--- in a separate thread (up to maxSize can be queued up at any one time).
--- Results are evaluated to normal form (not WHNF!) to ensure that the
--- computation is fully evaluated before being yielded to the next conduit.
-asyncMapC :: forall a m b . (MonadIO m, NFData b) => Int -> (a -> b) -> C.Conduit a m b
-asyncMapC maxSize f = initLoop (0 :: Int) (Seq.empty :: Seq.Seq (A.Async b))
+-- | This is like 'Data.Conduit.List.map', except that each element is processed
+-- in a separate thread (up to 'maxThreads' can be queued up at any one time).
+-- Results are evaluated to normal form (not weak-head normal form!, i.e., the
+-- structure is deeply evaluated) to ensure that the computation is fully
+-- evaluated in the worker thread.
+--
+-- Note that there is some overhead in threading. It is often a good idea to
+-- build larger chunks of input before passing it to 'asyncMapC' to amortize
+-- the costs. That is, when @f@ is not a lot of work, instead of @asyncMapC f@,
+-- it is sometimes better to do
+--
+-- @
+--    CC.conduitVector 4096 .| asyncMapC (V.map f) .| CC.concat
+-- @
+--
+-- where @CC@ refers to 'Data.Conduit.Combinators'
+asyncMapC :: forall a m b . (MonadIO m, NFData b) =>
+                    Int -- ^ Maximum number of worker threads
+                    -> (a -> b) -- ^ Function to execute
+                    -> C.Conduit a m b
+asyncMapC maxThreads f = initLoop (0 :: Int) (Seq.empty :: Seq.Seq (A.Async b))
     where
         initLoop :: Int -> Seq.Seq (A.Async b) -> C.Conduit a m b
         initLoop size q
-            | size == maxSize = loop q
+            | size == maxThreads = loop q
             | otherwise = C.await >>= \case
                 Nothing -> yAll q
                 Just v -> do
@@ -89,13 +104,15 @@ asyncMapC maxSize f = initLoop (0 :: Int) (Seq.empty :: Seq.Seq (A.Async b))
         yieldOrCleanup q = flip C.yieldOr (cleanup q)
 
 
--- | asyncMapC with error handling. The inner function can now return an error
--- (as a 'Left'). When the first error is seen, it 'throwError's in the main
--- monad. Note that 'f' may be evaluated for arguments beyond the first error
--- (as some threads may be running in the background and already processing
--- elements after the first error).
+-- | 'asyncMapC' with error handling. The inner function can now return an
+-- error (as a 'Left'). When the first error is seen, it 'throwError's in the
+-- main monad. Note that 'f' may be evaluated for arguments beyond the first
+-- error (as some threads may be running in the background and already
+-- processing elements after the first error).
+--
+-- See 'asyncMapC'
 asyncMapEitherC :: forall a m b e . (MonadIO m, NFData b, NFData e, MonadError e m) => Int -> (a -> Either e b) -> C.Conduit a m b
-asyncMapEitherC maxSize f = asyncMapC maxSize f .| (C.awaitForever $ \case
+asyncMapEitherC maxThreads f = asyncMapC maxThreads f .| (C.awaitForever $ \case
                                 Right v -> C.yield v
                                 Left err -> throwError err)
 
@@ -126,7 +143,8 @@ untilNothing = C.await >>= \case
         untilNothing
     _ -> return ()
 
--- | A simple sink which performs gzip in a separate thread and writes the results to `h`.
+-- | A simple sink which performs gzip compression in a separate thread and
+-- writes the results to `h`.
 --
 -- See also 'asyncGzipToFile'
 asyncGzipTo :: forall m. (MonadIO m, MonadBaseControl IO m) => Handle -> C.Sink B.ByteString m ()
@@ -179,6 +197,8 @@ asyncGzipFromFile fname = C.bracketP
 
 -- | If the filename indicates a gzipped file (or, on Unix, also a bz2 file),
 -- then it reads it and uncompresses it.
+--
+-- On Windows, attempting to read from a bzip2 file, results in 'error'.
 --
 -- For the case of gzip, 'asyncGzipFromFile' is used.
 conduitPossiblyCompressedFile :: (MonadBaseControl IO m, MonadResource m) => FilePath -> C.Source m B.ByteString

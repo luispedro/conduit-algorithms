@@ -15,13 +15,31 @@ import qualified Data.Conduit as C
 import           Data.Maybe (maybe)
 import           Control.Monad (unless)
 
--- | This is a simple utility adapted from
+-- | Act on the next input (do nothing if no input). @awaitJust f@ is equivalent to
+--
+--
+-- @ do
+--      next <- C.await
+--      case next of
+--          Just val -> f val
+--          Nothing -> return ()
+-- @
+--
+-- This is a simple utility adapted from
 -- http://neilmitchell.blogspot.de/2015/07/thoughts-on-conduits.html
 awaitJust :: Monad m => (a -> C.Conduit a m b) -> C.Conduit a m b
 awaitJust f = C.await >>= maybe (return ()) f
 
 -- | groupC yields the input as groups of 'n' elements. If the input is not a
 -- multiple of 'n', the last element will be incomplete
+--
+-- Example:
+--
+-- @
+--      CC.yieldMany [0..10] .| groupC 3 .| CC.consumeList
+-- @
+--
+-- results in @[ [0,1,2], [3,4,5], [6,7,8], [9, 10] ]@
 groupC :: (Monad m) => Int -> C.Conduit a m [a]
 groupC n = loop n []
     where
