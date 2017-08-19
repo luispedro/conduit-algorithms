@@ -17,7 +17,7 @@ module Data.Conduit.Algorithms
     ) where
 
 import qualified Data.Conduit as C
-import qualified Data.Conduit.Combinators as CC
+import qualified Data.Conduit.Internal as CI
 import qualified Data.Set as S
 import           Control.Monad.Trans.Class (lift)
 
@@ -47,7 +47,7 @@ uniqueOnC f = checkU (S.empty :: S.Set b)
 uniqueC :: (Ord a, Monad m) => C.Conduit a m a
 uniqueC = uniqueOnC id
 
--- | Merge a list of sorted sources
+-- | Merge a list of sorted sources to produce a single (sorted) source
 --
 -- This takes a list of sorted sources and produces a 'C.Source' which outputs
 -- all elements in sorted order.
@@ -69,31 +69,21 @@ mergeC args = let (a,b) = split2 args in mergeC2 (mergeC a) (mergeC b)
 --
 -- See 'mergeC'
 mergeC2 :: (Ord a, Monad m) => C.Source m a -> C.Source m a -> C.Source m a
-mergeC2 s1 s2 = do
-        -- If we were working in MonadIO, we could start two threads to write
-        -- to a channel and read it here. That'd make the code simpler, but
-        -- with some complications regarding partial use and IO-ness.
-        (c1', e1) <- lift $ s1 C.$$+ CC.head
-        (c2', e2) <- lift $ s2 C.$$+ CC.head
-        continue c1' c2' e1 e2
-    where
-        continue :: (Monad m, Ord a) => C.ResumableSource m a -> C.ResumableSource m a -> Maybe a -> Maybe a -> C.Source m a
-        continue _ _ Nothing Nothing = return ()
-        continue _ c Nothing e = continue c undefined e Nothing
-        continue c _ (Just e) Nothing = do
-            C.yield e
-            yieldAll c
-        continue c1 c2 je1@(Just e1) je2@(Just e2)
-            | compare e1 e2 == GT = continue c2 c1 je2 je1
-            | otherwise = do
-                C.yield e1
-                (c1', e1') <- lift $ c1 C.$$++ CC.head
-                continue c1' c2 e1' (Just e2)
-        yieldAll :: (Monad m) => C.ResumableSource m a -> C.Source m a
-        yieldAll rs = do
-            (rs',v) <- lift $ rs C.$$++ CC.head
-            case v of
-                Just v' -> do
-                    C.yield v'
-                    yieldAll rs'
-                Nothing -> return ()
+mergeC2 (CI.ConduitM s1) (CI.ConduitM s2) = CI.ConduitM $ \rest -> let
+        go right@(CI.HaveOutput s1' f1 v1) left@(CI.HaveOutput s2' f2 v2)
+            | compare v1 v2 /= GT = CI.HaveOutput (go s1' left) (f1 >> f2) v1
+            | otherwise = CI.HaveOutput (go right s2') (f1 >> f2) v2
+        go right CI.Done{} = right
+        go CI.Done{} left = left
+        go (CI.PipeM p) left = do
+            next <- lift p
+            go next left
+        go right (CI.PipeM p) = do
+            next <- lift p
+            go right next
+        go (CI.NeedInput _ next) left = go (next ()) left
+        go right (CI.NeedInput _ next) = go right (next ())
+        go (CI.Leftover next ()) left = go next left
+        go right (CI.Leftover next ()) = go right next
+    in go (s1 rest) (s2 rest)
+

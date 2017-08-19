@@ -1,3 +1,6 @@
+Version 0.0.2.0+git
+	* Much improved mergeC2 function
+
 Version 0.0.2.0 2017-08-08 by luispedro
 	* Fix haddock code generation.
 	* Export mergeC2 function.
