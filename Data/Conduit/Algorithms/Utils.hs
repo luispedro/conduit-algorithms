@@ -4,7 +4,7 @@ Copyright   : 2013-2017 Luis Pedro Coelho
 License     : MIT
 Maintainer  : luis@luispedro.org
 
-A few miscellaneous set of conduit utilities
+A few miscellaneous conduit utils
 -}
 module Data.Conduit.Algorithms.Utils
     ( awaitJust
