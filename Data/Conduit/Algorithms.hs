@@ -80,13 +80,11 @@ mergeC :: (Ord a, Monad m) => [C.Source m a] -> C.Source m a
 mergeC [] = return ()
 mergeC [s] = s
 mergeC [a,b] = mergeC2 a b
-mergeC args = let (a,b) = split2 args in mergeC2 (mergeC a) (mergeC b)
+mergeC args = mergeC2 (mergeC right) (mergeC left)
     where
-        split2 :: [a] -> ([a],[a])
-        split2 [] = ([], [])
-        split2 [a] = ([a], [])
-        split2 [a,b] = ([a], [b])
-        split2 (x:y:rs) = let (xs,ys) = split2 rs in (x:xs, y:ys)
+        right = take n args
+        left = drop n args
+        n = (length args) `div` 2
 
 -- | Take two sorted sources and merge them.
 --
