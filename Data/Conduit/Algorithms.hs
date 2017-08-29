@@ -12,6 +12,7 @@ Simple algorithms packaged as Conduits
 module Data.Conduit.Algorithms
     ( uniqueOnC
     , uniqueC
+    , removeRepeatsC
     , mergeC
     , mergeC2
     ) where
@@ -31,7 +32,8 @@ import           Data.Conduit.Algorithms.Utils (awaitJust)
 --
 -- Note that this conduit /does not/ assume that the input is sorted. Instead
 -- it uses a 'Data.Set' to store previously seen elements. Thus, memory usage
--- is O(N).
+-- is O(N) and time is O(N log N). If the input is sorted, you can use
+-- 'removeRepeatsC'
 uniqueOnC :: (Ord b, Monad m) => (a -> b) -> C.Conduit a m a
 uniqueOnC f = checkU (S.empty :: S.Set b)
     where
@@ -43,9 +45,30 @@ uniqueOnC f = checkU (S.empty :: S.Set b)
                                 checkU (S.insert (f val) cur)
 -- | Unique conduit
 --
--- See 'uniqueOnC'
+-- See 'uniqueOnC' and 'removeRepeatsC'
 uniqueC :: (Ord a, Monad m) => C.Conduit a m a
 uniqueC = uniqueOnC id
+
+-- | Removes repeated elements
+--
+-- @
+--  yieldMany [0, 0, 1, 1, 1, 2, 2, 0] .| removeRepeatsC .| consume
+-- @
+--
+-- is equivalent to @[0, 1, 2, 0]@
+--
+-- See 'uniqueC' and 'uniqueOnC'
+removeRepeatsC :: (Eq a, Monad m) => C.Conduit a m a
+removeRepeatsC = awaitJust removeRepeatsC'
+    where
+        removeRepeatsC' prev = C.await >>= \case
+                                        Nothing -> C.yield prev
+                                        Just next
+                                            | next == prev -> removeRepeatsC' prev
+                                            | otherwise -> do
+                                                        C.yield prev
+                                                        removeRepeatsC' next
+
 
 -- | Merge a list of sorted sources to produce a single (sorted) source
 --

@@ -57,6 +57,9 @@ case_mergeC2same = shouldProduce [0, 0, 1, 1, 2, 2 :: Int] $
 case_groupC = shouldProduce [[0,1,2], [3,4,5], [6,7,8], [9, 10 :: Int]] $
                             CC.yieldMany [0..10] .| CAlg.groupC 3
 
+case_removeRepeatsC = shouldProduce [0,1,2,3,4,5,6,7,8,9, 10 :: Int] $
+                            CC.yieldMany [0,0,0,1,1,1,2,2,3,4,5,6,6,6,6,7,7,8,9,10,10] .| CAlg.removeRepeatsC
+
 case_asyncMap :: IO ()
 case_asyncMap = do
     vals <- extractIO (CC.yieldMany [0..10] .| CAlg.asyncMapC 3 (+ (1:: Int)))

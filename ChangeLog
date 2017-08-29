@@ -1,5 +1,6 @@
 Version 0.0.2.0+git
 	* Much improved mergeC2 function
+	* Add removeRepeatsC conduit
 
 Version 0.0.2.0 2017-08-08 by luispedro
 	* Fix haddock code generation.
