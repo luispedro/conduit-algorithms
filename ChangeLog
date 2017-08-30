@@ -1,4 +1,4 @@
-Version 0.0.2.0+git
+Version 0.0.3.0 2017-08-30 by luispedro
 	* Much improved mergeC2 function
 	* Add removeRepeatsC conduit
 
