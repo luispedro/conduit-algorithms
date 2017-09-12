@@ -9,8 +9,11 @@ import Test.HUnit
 import Test.Framework.Providers.HUnit
 
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as B8
 import qualified Data.Conduit as C
 import qualified Data.Conduit.Combinators as CC
+import qualified Data.Conduit.Binary as CB
+import qualified Data.Conduit.List as CL
 import           Data.Conduit ((.|))
 import           Data.List (sort)
 import           System.Directory (removeFile)
@@ -24,12 +27,17 @@ main = $(defaultMainGenerator)
 
 testingFileNameGZ :: FilePath
 testingFileNameGZ = "file_just_for_testing_delete_me_please.gz"
+testingFileNameGZ2 :: FilePath
+testingFileNameGZ2 = "file_just_for_testing_delete_me_please_2.gz"
 
 extract c = C.runConduitPure (c .| CC.sinkList)
 
 extractIO c = C.runConduitRes (c .| CC.sinkList)
 
 shouldProduce values cond = extract cond @?= values
+shouldProduceIO values cond = do
+    p <- extractIO cond
+    p @?= values
 
 case_uniqueC = extract (CC.yieldMany [1,2,3,1,1,2,3] .| CAlg.uniqueC) @=? [1,2,3 :: Int]
 case_mergeC = shouldProduce expected $
@@ -79,3 +87,19 @@ case_asyncGzip = do
     r @?= "Hello World"
     removeFile testingFileNameGZ
 
+
+case_async_gzip_to_from = do
+    let testdata = [0 :: Int .. 12]
+    C.runConduitRes $
+        CC.yieldMany testdata
+            .| CL.map (B8.pack . (\n -> show n ++ "\n"))
+            .| CAlg.asyncGzipToFile testingFileNameGZ
+    C.runConduitRes $
+        CAlg.asyncGzipFromFile testingFileNameGZ
+        .| CAlg.asyncGzipToFile testingFileNameGZ2
+    shouldProduceIO testdata $
+        CAlg.asyncGzipFromFile testingFileNameGZ2
+            .| CB.lines
+            .| CL.map (read . B8.unpack)
+    removeFile testingFileNameGZ
+    removeFile testingFileNameGZ2
