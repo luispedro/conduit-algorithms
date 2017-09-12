@@ -1,5 +1,5 @@
 name:               conduit-algorithms
-version:            0.0.3.0
+version:            0.0.4.0
 synopsis:           Conduit-based algorithms
 description:        Algorithms on Conduits, including higher level asynchronous
                     processing and some other utilities.
