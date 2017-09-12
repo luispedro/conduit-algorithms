@@ -40,6 +40,8 @@ awaitJust f = C.await >>= maybe (return ()) f
 -- @
 --
 -- results in @[ [0,1,2], [3,4,5], [6,7,8], [9, 10] ]@
+--
+-- This function is deprecated; use 'Data.Conduit.List.chunksOf'
 groupC :: (Monad m) => Int -> C.Conduit a m [a]
 groupC n = loop n []
     where
