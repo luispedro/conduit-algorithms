@@ -54,6 +54,13 @@ case_mergeC2same = shouldProduce [0, 0, 1, 1, 2, 2 :: Int] $
                                 (CC.yieldMany [0, 1, 2])
                                 (CC.yieldMany [0, 1, 2])
 
+case_mergeC2monad = shouldProduce [0, 1, 2, 2, 3, 4 :: Int] $ do
+                            CAlg.mergeC2
+                                (CC.yieldMany [0, 2])
+                                (CC.yieldMany [1, 2])
+                            CC.yieldMany [3]
+                            CC.yieldMany [4]
+
 case_groupC = shouldProduce [[0,1,2], [3,4,5], [6,7,8], [9, 10 :: Int]] $
                             CC.yieldMany [0..10] .| CAlg.groupC 3
 

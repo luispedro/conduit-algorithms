@@ -94,8 +94,9 @@ mergeC2 (CI.ConduitM s1) (CI.ConduitM s2) = CI.ConduitM $ \rest -> let
         go right@(CI.HaveOutput s1' f1 v1) left@(CI.HaveOutput s2' f2 v2)
             | compare v1 v2 /= GT = CI.HaveOutput (go s1' left) (f1 >> f2) v1
             | otherwise = CI.HaveOutput (go right s2') (f1 >> f2) v2
-        go right CI.Done{} = right
-        go CI.Done{} left = left
+        go right@CI.Done{} (CI.HaveOutput s f v) = CI.HaveOutput (go right s) f v
+        go (CI.HaveOutput s f v) left@CI.Done{}  = CI.HaveOutput (go s left)  f v
+        go CI.Done{} CI.Done{} = rest ()
         go (CI.PipeM p) left = do
             next <- lift p
             go next left
@@ -106,5 +107,5 @@ mergeC2 (CI.ConduitM s1) (CI.ConduitM s2) = CI.ConduitM $ \rest -> let
         go right (CI.NeedInput _ next) = go right (next ())
         go (CI.Leftover next ()) left = go next left
         go right (CI.Leftover next ()) = go right next
-    in go (s1 rest) (s2 rest)
+    in go (s1 CI.Done) (s2 CI.Done)
 
