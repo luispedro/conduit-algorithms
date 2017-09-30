@@ -72,6 +72,9 @@ case_mergeC2monad = shouldProduce [0, 1, 2, 2, 3, 4 :: Int] $ do
 case_groupC = shouldProduce [[0,1,2], [3,4,5], [6,7,8], [9, 10 :: Int]] $
                             CC.yieldMany [0..10] .| CAlg.groupC 3
 
+case_enumerateC = shouldProduce [(0,'z'), (1,'o'), (2,'t')] $
+                            CC.yieldMany ("zot" :: [Char]) .| CAlg.enumerateC
+
 case_removeRepeatsC = shouldProduce [0,1,2,3,4,5,6,7,8,9, 10 :: Int] $
                             CC.yieldMany [0,0,0,1,1,1,2,2,3,4,5,6,6,6,6,7,7,8,9,10,10] .| CAlg.removeRepeatsC
 
