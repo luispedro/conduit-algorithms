@@ -81,14 +81,12 @@ mergeC :: (Ord a, Monad m) => [C.Source m a] -> C.Source m a
 mergeC [a] = a
 mergeC [a,b] = mergeC2 a b
 mergeC cs = CI.ConduitM $ \rest -> let
-        --go :: [CI.Pipe () i o () m ()] -> CI.Pipe () i o () m ()
         go [] = rest ()
-        go st = do
-            st' <- mapM norm1 st
-            case gettop st' of
+        go st =
+            case gettop st of
                 Nothing -> rest ()
                 Just (CI.HaveOutput c_next _ v, fs, next) ->
-                    CI.HaveOutput (go (c_next:next)) (sequence_ fs) v
+                    CI.HaveOutput (norm1 c_next >>= go . (:next)) (sequence_ fs) v
                 _ -> error "This should be impossible (mergeC/go/case-gettop)"
         norm1 :: Monad m => CI.Pipe () i o () m () -> CI.Pipe () i o () m (CI.Pipe () i o () m ())
         norm1 c@CI.HaveOutput{} = return c
@@ -104,7 +102,10 @@ mergeC cs = CI.ConduitM $ \rest -> let
             | otherwise = Just (c, f:fs, best_c:next)
         collect _ _ = error "This situation should be impossible (mergeC/collect)"
 
-    in go (map (($ CI.Done) . CI.unConduitM) cs)
+    in do
+        let st = map (($ CI.Done) . CI.unConduitM) cs
+        st' <- mapM norm1 st
+        go st'
 
 
 -- | Take two sorted sources and merge them.
