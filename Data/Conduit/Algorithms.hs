@@ -20,6 +20,7 @@ module Data.Conduit.Algorithms
 import qualified Data.Conduit as C
 import qualified Data.Conduit.Internal as CI
 import qualified Data.Set as S
+import           Data.List (foldl')
 import           Control.Monad.Trans.Class (lift)
 
 import           Data.Conduit.Algorithms.Utils (awaitJust)
@@ -77,14 +78,34 @@ removeRepeatsC = awaitJust removeRepeatsC'
 --
 -- See 'mergeC2'
 mergeC :: (Ord a, Monad m) => [C.Source m a] -> C.Source m a
-mergeC [] = return ()
-mergeC [s] = s
+mergeC [a] = a
 mergeC [a,b] = mergeC2 a b
-mergeC args = mergeC2 (mergeC right) (mergeC left)
-    where
-        right = take n args
-        left = drop n args
-        n = (length args) `div` 2
+mergeC cs = CI.ConduitM $ \rest -> let
+        --go :: [CI.Pipe () i o () m ()] -> CI.Pipe () i o () m ()
+        go [] = rest ()
+        go st = do
+            st' <- mapM norm1 st
+            case gettop st' of
+                Nothing -> rest ()
+                Just (CI.HaveOutput c_next _ v, fs, next) ->
+                    CI.HaveOutput (go (c_next:next)) (sequence_ fs) v
+                _ -> error "This should be impossible (mergeC/go/case-gettop)"
+        norm1 :: Monad m => CI.Pipe () i o () m () -> CI.Pipe () i o () m (CI.Pipe () i o () m ())
+        norm1 c@CI.HaveOutput{} = return c
+        norm1 c@CI.Done{} = return c
+        norm1 (CI.PipeM p) = lift p >>= norm1
+        norm1 (CI.NeedInput _ next) = norm1 (next ())
+        norm1 (CI.Leftover next ()) = norm1 next
+        gettop = foldl' collect Nothing
+        collect cur CI.Done{} = cur
+        collect Nothing c@(CI.HaveOutput _ f _) = Just (c, [f], [])
+        collect (Just (best_c@(CI.HaveOutput _ _ best_v), fs, next)) c@(CI.HaveOutput _ f v)
+            | v >= best_v = Just (best_c, f:fs, c:next)
+            | otherwise = Just (c, f:fs, best_c:next)
+        collect _ _ = error "This situation should be impossible (mergeC/collect)"
+
+    in go (map (($ CI.Done) . CI.unConduitM) cs)
+
 
 -- | Take two sorted sources and merge them.
 --
@@ -92,7 +113,7 @@ mergeC args = mergeC2 (mergeC right) (mergeC left)
 mergeC2 :: (Ord a, Monad m) => C.Source m a -> C.Source m a -> C.Source m a
 mergeC2 (CI.ConduitM s1) (CI.ConduitM s2) = CI.ConduitM $ \rest -> let
         go right@(CI.HaveOutput s1' f1 v1) left@(CI.HaveOutput s2' f2 v2)
-            | compare v1 v2 /= GT = CI.HaveOutput (go s1' left) (f1 >> f2) v1
+            | v1 <= v2 = CI.HaveOutput (go s1' left) (f1 >> f2) v1
             | otherwise = CI.HaveOutput (go right s2') (f1 >> f2) v2
         go right@CI.Done{} (CI.HaveOutput s f v) = CI.HaveOutput (go right s) f v
         go (CI.HaveOutput s f v) left@CI.Done{}  = CI.HaveOutput (go s left)  f v
@@ -108,4 +129,3 @@ mergeC2 (CI.ConduitM s1) (CI.ConduitM s2) = CI.ConduitM $ \rest -> let
         go (CI.Leftover next ()) left = go next left
         go right (CI.Leftover next ()) = go right next
     in go (s1 CI.Done) (s2 CI.Done)
-

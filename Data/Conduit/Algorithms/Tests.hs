@@ -17,6 +17,7 @@ import qualified Data.Conduit.List as CL
 import           Data.Conduit ((.|))
 import           Data.List (sort)
 import           System.Directory (removeFile)
+import           Control.Monad (forM_)
 
 import qualified Data.Conduit.Algorithms as CAlg
 import qualified Data.Conduit.Algorithms.Utils as CAlg
@@ -45,12 +46,31 @@ case_mergeC = shouldProduce expected $
                                 [ CC.yieldMany i1
                                 , CC.yieldMany i2
                                 , CC.yieldMany i3
+                                , CC.yieldMany i3
+                                ]
+    where
+        expected = sort (concat [i1, i2, i3, i3])
+        i1 = [ 1, 2, 4 :: Int]
+        i2 = [ 1, 4, 4, 5]
+        i3 = [-1, 0, 7]
+
+case_mergeCmonad = shouldProduce expected $
+                            CAlg.mergeC
+                                [ mYield i1
+                                , mYield i2
+                                , mYield i3
                                 ]
     where
         expected = sort (concat [i1, i2, i3])
+        mYield lst = do
+            let lst' = map return lst
+            forM_ lst' $ \elem -> do
+                elem' <- elem
+                C.yield elem'
         i1 = [ 0, 2, 4 :: Int]
         i2 = [ 1, 3, 4, 5]
         i3 = [-1, 0, 7]
+
 
 case_mergeC2 = shouldProduce [0, 1, 1, 2, 3, 5 :: Int] $
                             CAlg.mergeC2
