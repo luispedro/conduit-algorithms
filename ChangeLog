@@ -1,3 +1,6 @@
+Version 0.0.6.0
+	* More efficient mergeC conduit
+
 Version 0.0.5.0 2017-10-03 by luispedro
 	* Add enumerateC conduit
 	* Better mergeC conduit (list case)

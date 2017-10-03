@@ -20,7 +20,7 @@ module Data.Conduit.Algorithms
 import qualified Data.Conduit as C
 import qualified Data.Conduit.Internal as CI
 import qualified Data.Set as S
-import           Data.List (foldl')
+import           Data.List (sortBy, insertBy)
 import           Control.Monad.Trans.Class (lift)
 
 import           Data.Conduit.Algorithms.Utils (awaitJust)
@@ -82,30 +82,28 @@ mergeC [a] = a
 mergeC [a,b] = mergeC2 a b
 mergeC cs = CI.ConduitM $ \rest -> let
         go [] = rest ()
-        go st =
-            case gettop st of
-                Nothing -> rest ()
-                Just (CI.HaveOutput c_next _ v, fs, next) ->
-                    CI.HaveOutput (norm1 c_next >>= go . (:next)) (sequence_ fs) v
-                _ -> error "This should be impossible (mergeC/go/case-gettop)"
+        go allc@(CI.HaveOutput c_next _ v:larger) =
+            CI.HaveOutput (norm1 c_next >>= go . insert1 larger) (finalizeAll allc) v
+        go _ = error "This situation should have been impossible (mergeC/compareHO)"
+        insert1 larger CI.Done{} = larger
+        insert1 larger c = insertBy compareHO c larger
         norm1 :: Monad m => CI.Pipe () i o () m () -> CI.Pipe () i o () m (CI.Pipe () i o () m ())
         norm1 c@CI.HaveOutput{} = return c
         norm1 c@CI.Done{} = return c
         norm1 (CI.PipeM p) = lift p >>= norm1
         norm1 (CI.NeedInput _ next) = norm1 (next ())
         norm1 (CI.Leftover next ()) = norm1 next
-        gettop = foldl' collect Nothing
-        collect cur CI.Done{} = cur
-        collect Nothing c@(CI.HaveOutput _ f _) = Just (c, [f], [])
-        collect (Just (best_c@(CI.HaveOutput _ _ best_v), fs, next)) c@(CI.HaveOutput _ f v)
-            | v >= best_v = Just (best_c, f:fs, c:next)
-            | otherwise = Just (c, f:fs, best_c:next)
-        collect _ _ = error "This situation should be impossible (mergeC/collect)"
-
+        isHO CI.HaveOutput{} = True
+        isHO _ = False
+        compareHO (CI.HaveOutput _ _ a) (CI.HaveOutput _ _ b) = compare a b
+        compareHO _ _ = error "This situation should have been impossible (mergeC/compareHO)"
+        finalizeAll [] = return ()
+        finalizeAll (CI.HaveOutput _ f _ : larger) = f >> finalizeAll larger
+        finalizeAll (_ :larger) = finalizeAll larger
     in do
         let st = map (($ CI.Done) . CI.unConduitM) cs
         st' <- mapM norm1 st
-        go st'
+        go . sortBy compareHO . filter isHO $ st'
 
 
 -- | Take two sorted sources and merge them.
