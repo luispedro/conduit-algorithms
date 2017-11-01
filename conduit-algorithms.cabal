@@ -1,5 +1,5 @@
 name:               conduit-algorithms
-version:            0.0.6.0
+version:            0.0.6.1
 synopsis:           Conduit-based algorithms
 description:        Algorithms on Conduits, including higher level asynchronous
                     processing and some other utilities.
@@ -30,15 +30,11 @@ library
     conduit-extra,
     containers,
     deepseq,
-    directory,
-    filepath,
     mtl,
     resourcet,
     stm,
-    stm-chans,
     stm-conduit >= 2.7,
-    transformers,
-    unix
+    transformers
 
 Test-Suite catest
   default-language: Haskell2010
@@ -59,16 +55,13 @@ Test-Suite catest
     conduit-combinators,
     conduit-extra,
     containers,
-    deepseq,
     directory,
-    filepath,
+    deepseq,
     mtl,
     resourcet,
     stm,
-    stm-chans,
     stm-conduit >= 2.7,
     transformers,
-    unix,
     HUnit,
     test-framework,
     test-framework-hunit,
