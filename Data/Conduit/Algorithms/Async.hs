@@ -29,6 +29,7 @@ import qualified Data.Conduit.Async as CA
 import qualified Data.Conduit.TQueue as CA
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Zlib as CZ
+import qualified Data.Conduit.Lzma as CX
 #ifndef WINDOWS
 -- bzlib cannot compile on Windows (as of 2016/07/05)
 import qualified Data.Conduit.BZlib as CZ
@@ -204,10 +205,12 @@ asyncGzipFromFile fname = C.bracketP
 conduitPossiblyCompressedFile :: (MonadBaseControl IO m, MonadResource m) => FilePath -> C.Source m B.ByteString
 conduitPossiblyCompressedFile fname
     | ".gz" `isSuffixOf` fname = asyncGzipFromFile fname
+    | ".xz" `isSuffixOf` fname = C.sourceFile fname .| CX.decompress oneGBmembuffer
 #ifndef WINDOWS
     | ".bz2" `isSuffixOf` fname = C.sourceFile fname .| CZ.bunzip2
 #else
     | ".bz2" `isSuffixOf` fname = error "bzip2 decompression is not available on Windows"
 #endif
     | otherwise = C.sourceFile fname
+        where oneGBmembuffer = Just $ 1024 * 1024 * 1024
 
