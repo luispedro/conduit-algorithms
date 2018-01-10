@@ -1,3 +1,6 @@
+Version 0.0.6.1+
+	* Add unorderedAsyncMapC
+
 Version 0.0.6.0 2017-10-09 by luispedro
 	* More efficient mergeC conduit
 

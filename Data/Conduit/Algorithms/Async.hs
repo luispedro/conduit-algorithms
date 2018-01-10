@@ -6,7 +6,7 @@ Maintainer  : luis@luispedro.org
 
 Higher level async processing interfaces.
 -}
-{-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP #-}
+{-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP, TupleSections #-}
 
 module Data.Conduit.Algorithms.Async
     ( conduitPossiblyCompressedFile
@@ -16,6 +16,7 @@ module Data.Conduit.Algorithms.Async
     , asyncGzipToFile
     , asyncGzipFrom
     , asyncGzipFromFile
+    , unorderedAsyncMapC
     ) where
 
 
@@ -39,6 +40,7 @@ import           Data.Conduit ((.|))
 
 import qualified Data.Sequence as Seq
 import           Data.Sequence ((|>), ViewL(..))
+import           Data.Foldable (toList)
 import           Control.Monad (forM_)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Error.Class (MonadError(..))
@@ -67,11 +69,32 @@ import           Data.Conduit.Algorithms.Utils (awaitJust)
 -- @
 --
 -- where @CC@ refers to 'Data.Conduit.Combinators'
+--
+-- See 'unorderedAsyncMapC'
 asyncMapC :: forall a m b . (MonadIO m, NFData b) =>
                     Int -- ^ Maximum number of worker threads
                     -> (a -> b) -- ^ Function to execute
                     -> C.Conduit a m b
-asyncMapC maxThreads f = initLoop (0 :: Int) (Seq.empty :: Seq.Seq (A.Async b))
+asyncMapC = asyncMapCHelper True
+
+-- | A version of 'asyncMapC' which can reorder results in the stream
+--
+-- If the order of the results is not important, this function can lead to a
+-- better use of resources if some of the chunks take longer to complete.
+--
+-- See 'asyncMapC'
+unorderedAsyncMapC :: forall a m b . (MonadIO m, NFData b) =>
+                    Int -- ^ Maximum number of worker threads
+                    -> (a -> b) -- ^ Function to execute
+                    -> C.Conduit a m b
+unorderedAsyncMapC = asyncMapCHelper False
+
+asyncMapCHelper  :: forall a m b . (MonadIO m, NFData b) =>
+                    Bool
+                    -> Int -- ^ Maximum number of worker threads
+                    -> (a -> b) -- ^ Function to execute
+                    -> C.Conduit a m b
+asyncMapCHelper isSynchronous maxThreads f = initLoop (0 :: Int) (Seq.empty :: Seq.Seq (A.Async b))
     where
         initLoop :: Int -> Seq.Seq (A.Async b) -> C.Conduit a m b
         initLoop size q
@@ -95,14 +118,21 @@ asyncMapC maxThreads f = initLoop (0 :: Int) (Seq.empty :: Seq.Seq (A.Async b))
                 Nothing -> yAll q
                 Just v -> do
                     v' <- sched v
-                    case Seq.viewl q of
-                        (r :< rest) -> do
-                            yieldOrCleanup rest =<< liftIO (A.wait r)
-                            loop (rest |> v')
-                        _ -> error "should never happen"
+                    (r, q') <- liftIO $ retrieveResult q
+                    yieldOrCleanup q' r
+                    loop (q' |> v')
         cleanup :: Seq.Seq (A.Async b) -> m ()
         cleanup q = liftIO $ forM_ q A.cancel
         yieldOrCleanup q = flip C.yieldOr (cleanup q)
+
+        retrieveResult :: Seq.Seq (A.Async b) -> IO (b, Seq.Seq (A.Async b))
+        retrieveResult q
+            | isSynchronous = case Seq.viewl q of
+                        (r :< rest) -> (, rest) <$> A.wait r
+                        _ -> error "Impossible situation"
+            | otherwise = do
+                (k, r) <- liftIO (A.waitAny (toList q))
+                return (r, Seq.filter (/= k) q)
 
 
 -- | 'asyncMapC' with error handling. The inner function can now return an

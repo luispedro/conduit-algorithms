@@ -1,4 +1,4 @@
-{- Copyright 2017 Luis Pedro Coelho
+{- Copyright 2017-2018 Luis Pedro Coelho
  - License: MIT
  -}
 {-# LANGUAGE TemplateHaskell, QuasiQuotes, FlexibleContexts, OverloadedStrings #-}
@@ -102,6 +102,11 @@ case_asyncMap :: IO ()
 case_asyncMap = do
     vals <- extractIO (CC.yieldMany [0..10] .| CAlg.asyncMapC 3 (+ (1:: Int)))
     (vals @?= [1..11])
+
+case_unorderedAsyncMapC :: IO ()
+case_unorderedAsyncMapC = do
+    vals <- extractIO (CC.yieldMany [0..10] .| CAlg.unorderedAsyncMapC 3 (+ (1:: Int)))
+    (sort vals @?= [1..11])
 
 case_asyncGzip :: IO ()
 case_asyncGzip = do
