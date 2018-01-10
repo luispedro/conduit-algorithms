@@ -30,14 +30,16 @@ import           Control.Monad (unless)
 -- http://neilmitchell.blogspot.de/2015/07/thoughts-on-conduits.html
 awaitJust :: Monad m => (a -> C.Conduit a m b) -> C.Conduit a m b
 awaitJust f = C.await >>= maybe (return ()) f
+{-# INLINE awaitJust #-}
 
--- Conduit analogue to Python's enumerate function
+-- | Conduit analogue to Python's enumerate function
 enumerateC :: Monad m => C.Conduit a m (Int, a)
 enumerateC = enumerateC' 0
     where
         enumerateC' !i = awaitJust $ \v -> do
                                         C.yield (i, v)
                                         enumerateC' (i + 1)
+{-# INLINE enumerateC #-}
 
 -- | groupC yields the input as groups of 'n' elements. If the input is not a
 -- multiple of 'n', the last element will be incomplete
