@@ -2,9 +2,8 @@
 
 [![Hackage](https://img.shields.io/hackage/v/conduit-algorithms.svg)](https://hackage.haskell.org/package/conduit-algorithms)
 [![Hackage-Deps](https://img.shields.io/hackage-deps/v/conduit-algorithms.svg)](http://packdeps.haskellers.com/feed?needle=conduit-algorithms)
+[![Stackage (LTS)](http://stackage.org/package/conduit-algorithms/badge/lts)](http://stackage.org/lts/package/conduit-algorithms)
 [![Travis](https://api.travis-ci.org/luispedro/conduit-algorithms.png)](https://travis-ci.org/luispedro/conduit-algorithms)
-
-
 Some conduit-based algorithms.
 
 Much of this code was originally part of [NGLess](http://ngless.embl.de) and
