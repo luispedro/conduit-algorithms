@@ -22,6 +22,7 @@ import           Control.Monad (forM_)
 import qualified Data.Conduit.Algorithms as CAlg
 import qualified Data.Conduit.Algorithms.Utils as CAlg
 import qualified Data.Conduit.Algorithms.Async as CAlg
+import qualified Data.Conduit.Algorithms.Async.ByteString as CAlg
 
 main :: IO ()
 main = $(defaultMainGenerator)
@@ -131,3 +132,11 @@ case_async_gzip_to_from = do
             .| CL.map (read . B8.unpack)
     removeFile testingFileNameGZ
     removeFile testingFileNameGZ2
+
+case_asyncFilterLines = do
+    vals <- extractIO (CC.yieldMany ["This is\nMy data\nBut"," sometimes","\nit is split,\n","in weird ways."] .| CAlg.asyncFilterLinesC 2 (B8.notElem ','))
+    (vals @?= ["This is", "My data", "But sometimes", "in weird ways."])
+
+case_asyncFilterLinesAllTrue = do
+    vals <- extractIO (CC.yieldMany ["This is\nMy data\nBut"," sometimes","\nit is split,\n","in weird ways."] .| CAlg.asyncFilterLinesC 2 (const True))
+    (vals @?= ["This is", "My data", "But sometimes", "it is split,", "in weird ways."])

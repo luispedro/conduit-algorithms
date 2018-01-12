@@ -19,6 +19,7 @@ library
   exposed-modules: Data.Conduit.Algorithms
                    Data.Conduit.Algorithms.Utils
                    Data.Conduit.Algorithms.Async
+                   Data.Conduit.Algorithms.Async.ByteString
   ghc-options: -Wall
   build-depends:
     base > 4.8 && < 5,

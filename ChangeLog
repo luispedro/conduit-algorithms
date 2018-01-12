@@ -1,5 +1,9 @@
 Version 0.0.6.1+
 	* Add unorderedAsyncMapC
+	* Add Data.Conduit.Async.ByteString module
+
+Version 0.0.6.1 2017-11-01 by luispedro
+	* Remove Unix dependency (compile on Windows)
 
 Version 0.0.6.0 2017-10-09 by luispedro
 	* More efficient mergeC conduit
