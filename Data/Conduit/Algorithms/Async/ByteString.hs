@@ -9,7 +9,7 @@ Higher level async processing interfaces.
 {-# LANGUAGE ScopedTypeVariables, FlexibleContexts, TupleSections #-}
 
 module Data.Conduit.Algorithms.Async.ByteString
-    ( asynMapLineGroupsC
+    ( asyncMapLineGroupsC
     , asyncFilterLinesC
     ) where
 
@@ -21,9 +21,9 @@ import qualified Data.Conduit.List as CL
 import qualified Data.Conduit as C
 import           Data.Conduit ((.|))
 
+import           Control.Monad (unless)
 import           Control.Monad.IO.Class (MonadIO)
 import           Control.DeepSeq
-import           Data.Maybe (mapMaybe)
 
 
 -- | Apply a function to groups of lines
@@ -38,14 +38,14 @@ import           Data.Maybe (mapMaybe)
 -- The reason being that splitting into lines then becomes the bottleneck and
 -- processing a single line is typically a tiny chunk of work so that the
 -- threading overhead overwhelms the advantage of using multiple cores.
--- Instead, 'asynMapLineGroupsC' will pass big chunks to the worker thread and
+-- Instead, 'asyncMapLineGroupsC' will pass big chunks to the worker thread and
 -- perform most of the line splitting _in the worker thread_.
 --
 -- Only Unix-style ASCII lines are supported (splitting at Bytes with value
 -- 10, i.e., \n). When Windows lines (\r\n) are passed to this function, this
 -- results in each element having an extra \r at the end.
-asynMapLineGroupsC :: (MonadIO m, NFData a) => Int -> ([B.ByteString] -> a) -> C.Conduit B.ByteString m a
-asynMapLineGroupsC nthreads f = breakAtLineBoundary .| CAlg.asyncMapC nthreads (f . asLines)
+asyncMapLineGroupsC :: (MonadIO m, NFData a) => Int -> ([B.ByteString] -> a) -> C.Conduit B.ByteString m a
+asyncMapLineGroupsC nthreads f = breakAtLineBoundary .| CAlg.asyncMapC nthreads (f . asLines)
     where
         asLines :: BL.ByteString -> [B.ByteString]
         asLines = fmap BL.toStrict . BL.split 10
@@ -54,7 +54,8 @@ asynMapLineGroupsC nthreads f = breakAtLineBoundary .| CAlg.asyncMapC nthreads (
         breakAtLineBoundary :: Monad m => C.Conduit B.ByteString m BL.ByteString
         breakAtLineBoundary = continue BL.empty
         continue prev = C.await >>= \case
-                    Nothing -> C.yield prev
+                    Nothing -> unless (BL.null prev) $
+                                C.yield prev
                     Just n -> case B.elemIndexEnd 10 n of
                         Nothing -> continue (BL.append prev (BL.fromStrict n))
                         Just p -> do
@@ -64,6 +65,6 @@ asynMapLineGroupsC nthreads f = breakAtLineBoundary .| CAlg.asyncMapC nthreads (
 
 -- | Filter lines using multiple threads
 asyncFilterLinesC :: MonadIO m => Int -> (B.ByteString -> Bool) -> C.Conduit B.ByteString m B.ByteString
-asyncFilterLinesC n f = asynMapLineGroupsC n (filter f) .| CL.concat
+asyncFilterLinesC n f = asyncMapLineGroupsC n (filter f) .| CL.concat
 {-# INLINE asyncFilterLinesC #-}
 
