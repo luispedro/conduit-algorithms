@@ -1,6 +1,7 @@
 Version 0.0.6.1+
 	* Add unorderedAsyncMapC
-	* Add Data.Conduit.Async.ByteString module
+	* Add Data.Conduit.Algorithms.Async.ByteString module
+	* Add Data.Conduit.Algorithms.Storable
 
 Version 0.0.6.1 2017-11-01 by luispedro
 	* Remove Unix dependency (compile on Windows)

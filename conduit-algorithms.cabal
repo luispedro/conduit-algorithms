@@ -20,6 +20,7 @@ library
                    Data.Conduit.Algorithms.Utils
                    Data.Conduit.Algorithms.Async
                    Data.Conduit.Algorithms.Async.ByteString
+                   Data.Conduit.Algorithms.Storable
   ghc-options: -Wall
   build-depends:
     base > 4.8 && < 5,
@@ -27,7 +28,7 @@ library
     bytestring,
     bzlib-conduit,
     conduit >= 1.0,
-    conduit-combinators,
+    conduit-combinators >= 1.1.2,
     conduit-extra,
     containers,
     deepseq,
@@ -36,6 +37,7 @@ library
     resourcet,
     stm,
     stm-conduit >= 2.7,
+    vector,
     transformers
 
 Test-Suite catest
@@ -46,6 +48,8 @@ Test-Suite catest
   other-modules: Data.Conduit.Algorithms
                  Data.Conduit.Algorithms.Utils
                  Data.Conduit.Algorithms.Async
+                 Data.Conduit.Algorithms.Async.ByteString
+                 Data.Conduit.Algorithms.Storable
   ghc-options: -Wall
   hs-source-dirs: .
   build-depends:
@@ -64,6 +68,7 @@ Test-Suite catest
     resourcet,
     stm,
     stm-conduit >= 2.7,
+    vector,
     transformers,
     HUnit,
     test-framework,

@@ -14,12 +14,14 @@ import qualified Data.Conduit as C
 import qualified Data.Conduit.Combinators as CC
 import qualified Data.Conduit.Binary as CB
 import qualified Data.Conduit.List as CL
+import qualified Data.Vector.Storable as VS
 import           Data.Conduit ((.|))
 import           Data.List (sort)
 import           System.Directory (removeFile)
 import           Control.Monad (forM_)
 
 import qualified Data.Conduit.Algorithms as CAlg
+import qualified Data.Conduit.Algorithms.Storable as CAlg
 import qualified Data.Conduit.Algorithms.Utils as CAlg
 import qualified Data.Conduit.Algorithms.Async as CAlg
 import qualified Data.Conduit.Algorithms.Async.ByteString as CAlg
@@ -140,3 +142,8 @@ case_asyncFilterLines = do
 case_asyncFilterLinesAllTrue = do
     vals <- extractIO (CC.yieldMany ["This is\nMy data\nBut"," sometimes","\nit is split,\n","in weird ways."] .| CAlg.asyncFilterLinesC 2 (const True))
     (vals @?= ["This is", "My data", "But sometimes", "it is split,", "in weird ways."])
+
+case_storableVector = do
+    let v = VS.fromList [0:: Int, 1, 2, 4, 6, 12]
+    vals <- extractIO (CC.yieldMany [v,v,v] .| CAlg.writeStorableV .| CAlg.readStorableV 3)
+    (VS.concat vals @=? VS.concat [v,v,v])
