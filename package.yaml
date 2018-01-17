@@ -1,0 +1,62 @@
+name:               conduit-algorithms
+version:            0.0.7.0
+synopsis:           Conduit-based algorithms
+category:           Conduit
+author:             Luis Pedro Coelho
+maintainer:         Luis Pedro Coelho
+license:            MIT
+license-file:       COPYING
+github:             luispedro/conduit-algorithms
+description: >
+        Algorithms on Conduits, including higher level asynchronous processing
+        and some other utilities.
+
+extra-source-files:
+ - README.md
+ - ChangeLog
+default-extensions:
+ - BangPatterns
+ - OverloadedStrings
+ - LambdaCase
+ - TupleSections
+ghc-options:
+ - -Wall
+
+dependencies:
+  - base > 4.8 && < 5
+  - async
+  - bytestring
+  - bzlib-conduit
+  - conduit >= 1.0
+  - conduit-combinators >= 1.1.2
+  - conduit-extra
+  - containers
+  - deepseq
+  - lzma-conduit
+  - mtl
+  - resourcet
+  - stm
+  - stm-conduit >= 2.7
+  - vector
+  - transformers
+
+library:
+  conduit-algorithms:
+    exposed-modules:
+      - Data.Conduit.Algorithms
+      - Data.Conduit.Algorithms.Utils
+      - Data.Conduit.Algorithms.Async
+      - Data.Conduit.Algorithms.Async.ByteString
+      - Data.Conduit.Algorithms.Storable
+    other-modules: []
+
+tests:
+  conduit-algorithms-test:
+    main: Data/Conduit/Algorithms/Tests.hs
+    dependencies:
+      - directory
+      - HUnit
+      - test-framework
+      - test-framework-hunit
+      - test-framework-th
+
