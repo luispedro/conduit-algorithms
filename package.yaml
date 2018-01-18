@@ -41,22 +41,22 @@ dependencies:
   - transformers
 
 library:
-  conduit-algorithms:
-    exposed-modules:
-      - Data.Conduit.Algorithms
-      - Data.Conduit.Algorithms.Utils
-      - Data.Conduit.Algorithms.Async
-      - Data.Conduit.Algorithms.Async.ByteString
-      - Data.Conduit.Algorithms.Storable
-    other-modules: []
+  exposed-modules:
+    - Data.Conduit.Algorithms
+    - Data.Conduit.Algorithms.Utils
+    - Data.Conduit.Algorithms.Async
+    - Data.Conduit.Algorithms.Async.ByteString
+    - Data.Conduit.Algorithms.Storable
+  other-modules: []
 
 tests:
   conduit-algorithms-test:
-    main: Data/Conduit/Algorithms/Tests.hs
+    source-dirs: ./tests
+    main: Tests.hs
     dependencies:
+      - conduit-algorithms  
       - directory
       - HUnit
       - test-framework
       - test-framework-hunit
       - test-framework-th
-
