@@ -1,3 +1,6 @@
+Version 0.0.7.1 2018-01-18 by luispedro
+	* Fix testing in newer stack/cabal/hpack (issue #3)
+
 Version 0.0.7.0 2018-01-17 by luispedro
 	* Add unorderedAsyncMapC
 	* Add Data.Conduit.Algorithms.Async.ByteString module

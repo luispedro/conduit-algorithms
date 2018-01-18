@@ -1,5 +1,5 @@
 name:               conduit-algorithms
-version:            0.0.7.0
+version:            0.0.7.1
 synopsis:           Conduit-based algorithms
 category:           Conduit
 author:             Luis Pedro Coelho
@@ -54,7 +54,7 @@ tests:
     source-dirs: ./tests
     main: Tests.hs
     dependencies:
-      - conduit-algorithms  
+      - conduit-algorithms
       - directory
       - HUnit
       - test-framework
