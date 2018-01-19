@@ -4,7 +4,7 @@ Copyright   : 2018 Luis Pedro Coelho
 License     : MIT
 Maintainer  : luis@luispedro.org
 
-Higher level async processing interfaces.
+Higher level async processing interfaces for handling 'ByteString' objects.
 -}
 {-# LANGUAGE ScopedTypeVariables, FlexibleContexts, TupleSections #-}
 
@@ -42,8 +42,8 @@ import           Control.DeepSeq
 -- perform most of the line splitting _in the worker thread_.
 --
 -- Only Unix-style ASCII lines are supported (splitting at Bytes with value
--- 10, i.e., \n). When Windows lines (\r\n) are passed to this function, this
--- results in each element having an extra \r at the end.
+-- 10, i.e., \\n). When Windows lines (\\r\\n) are passed to this function, this
+-- results in each element having an extra \\r at the end.
 asyncMapLineGroupsC :: (MonadIO m, NFData a) => Int -> ([B.ByteString] -> a) -> C.Conduit B.ByteString m a
 asyncMapLineGroupsC nthreads f = breakAtLineBoundary .| CAlg.asyncMapC nthreads (f . asLines)
     where
@@ -64,6 +64,14 @@ asyncMapLineGroupsC nthreads f = breakAtLineBoundary .| CAlg.asyncMapC nthreads 
                             continue (BL.fromStrict $ B.drop 1 rest) -- skip \n char
 
 -- | Filter lines using multiple threads
+--
+-- It is not clear from the types but the input is taken to unbroken lines,
+-- while the output will be yielded line by line. This conduit is equivalent to
+--
+-- @
+--      CB.lines .| CL.filer f
+-- @
+--
 asyncFilterLinesC :: MonadIO m => Int -> (B.ByteString -> Bool) -> C.Conduit B.ByteString m B.ByteString
 asyncFilterLinesC n f = asyncMapLineGroupsC n (filter f) .| CL.concat
 {-# INLINE asyncFilterLinesC #-}

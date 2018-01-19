@@ -32,7 +32,7 @@ import           Data.Conduit ((.|))
 --
 -- This uses the same format as in-memory
 --
--- See |readStorableV|
+-- See 'readStorableV'
 writeStorableV :: forall m a. (MonadIO m, Monad m, Storable a) => C.Conduit (VS.Vector a) m B.ByteString
 writeStorableV = CL.mapM (liftIO. encodeStorable')
     where
@@ -45,7 +45,7 @@ writeStorableV = CL.mapM (liftIO. encodeStorable')
 --
 -- This expects the same format as the in-memory vector
 --
--- See |writeStorableV|
+-- See 'writeStorableV'
 readStorableV :: forall m a. (MonadIO m, Storable a) => Int -> C.ConduitM B.ByteString (VS.Vector a) m ()
 readStorableV nelems = CC.chunksOfE blockBytes .| parseBlocks
     where
