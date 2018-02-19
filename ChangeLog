@@ -1,3 +1,6 @@
+Version 0.0.7.2 2018-02-19 by luispedro
+	* Add handle information to error message to Handle in asyncGzipFrom
+
 Version 0.0.7.1 2018-01-18 by luispedro
 	* Fix testing in newer stack/cabal/hpack (issue #3)
 

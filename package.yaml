@@ -1,5 +1,5 @@
 name:               conduit-algorithms
-version:            0.0.7.1
+version:            0.0.7.2
 synopsis:           Conduit-based algorithms
 category:           Conduit
 author:             Luis Pedro Coelho
@@ -27,7 +27,7 @@ dependencies:
   - async
   - bytestring
   - bzlib-conduit
-  - conduit >= 1.0
+  - conduit >= 1.0.11
   - conduit-combinators >= 1.1.2
   - conduit-extra
   - containers
@@ -35,6 +35,7 @@ dependencies:
   - lzma-conduit
   - mtl
   - resourcet
+  - streaming-commons
   - stm
   - stm-conduit >= 2.7
   - vector

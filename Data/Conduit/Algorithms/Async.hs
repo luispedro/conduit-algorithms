@@ -31,6 +31,7 @@ import qualified Data.Conduit.TQueue as CA
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Zlib as CZ
 import qualified Data.Conduit.Lzma as CX
+import qualified Data.Streaming.Zlib as SZ
 #ifndef WINDOWS
 -- bzlib cannot compile on Windows (as of 2016/07/05)
 import qualified Data.Conduit.BZlib as CZ
@@ -45,8 +46,9 @@ import           Control.Monad (forM_)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Error.Class (MonadError(..))
 import           Control.Monad.Trans.Resource (MonadResource, MonadBaseControl)
-import           Control.Exception (evaluate)
-import           Control.DeepSeq
+import           Control.Exception (evaluate, displayException)
+import           Control.DeepSeq (NFData, force)
+import           System.IO.Error (mkIOError, userErrorType)
 import           System.IO
 import           Data.List (isSuffixOf)
 import           Data.Conduit.Algorithms.Utils (awaitJust)
@@ -213,8 +215,9 @@ asyncGzipFrom h = do
                             .| CL.map Just
                             .| CA.sinkTBQueue q
                     atomically (TQ.writeTBQueue q Nothing)
-    CA.gatherFrom 8 prod
-        .| untilNothing
+    (CA.gatherFrom 8 prod .| untilNothing)
+        `C.catchC`
+        (\(e :: SZ.ZlibException) -> liftIO . ioError $ mkIOError userErrorType ("Error reading gzip file: "++displayException e) (Just h) Nothing)
 
 -- | Open and read a gzip file with the uncompression being performed in a
 -- separate thread.
