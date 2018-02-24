@@ -75,6 +75,8 @@ case_mergeCmonad = shouldProduce expected $
         i3 = [-1, 0, 7]
 
 
+case_mergeCempty = shouldProduce ([] :: [Int]) $ CAlg.mergeC []
+
 case_mergeC2 = shouldProduce [0, 1, 1, 2, 3, 5 :: Int] $
                             CAlg.mergeC2
                                 (CC.yieldMany [0, 1, 2])
