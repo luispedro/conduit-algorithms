@@ -10,12 +10,21 @@ Higher level async processing interfaces.
 
 module Data.Conduit.Algorithms.Async
     ( conduitPossiblyCompressedFile
+    , conduitPossiblyCompressedToFile
     , asyncMapC
     , asyncMapEitherC
     , asyncGzipTo
     , asyncGzipToFile
     , asyncGzipFrom
     , asyncGzipFromFile
+    , asyncBzip2To
+    , asyncBzip2ToFile
+    , asyncBzip2From
+    , asyncBzip2FromFile
+    , asyncXzTo
+    , asyncXzToFile
+    , asyncXzFrom
+    , asyncXzFromFile
     , unorderedAsyncMapC
     ) where
 
@@ -229,6 +238,118 @@ asyncGzipFromFile fname = C.bracketP
     hClose
     asyncGzipFrom
 
+-- | A simple sink which performs bzip2 compression in a separate thread and
+-- writes the results to `h`.
+--
+-- See also 'asyncGzipToFile'
+asyncBzip2To :: forall m. (MonadIO m, MonadResource m, MonadBaseControl IO m) => Handle -> C.Sink B.ByteString m ()
+asyncBzip2To h = do
+    let drain q = C.runConduit $
+                CA.sourceTBQueue q
+                    .| untilNothing
+                    .| CL.map (B.concat . reverse)
+#ifndef WINDOWS
+                    .| CZ.bzip2
+#else
+                    .| error "bzip2 compression is not available on Windows"
+#endif
+                    .| C.sinkHandle h
+    bsConcatTo ((2 :: Int) ^ (15 :: Int))
+        .| CA.drainTo 8 drain
+
+-- | Compresses the output and writes to the given file with compression being
+-- performed in a separate thread.
+--
+-- See also 'asyncGzipTo'
+asyncBzip2ToFile :: forall m. (MonadResource m, MonadBaseControl IO m) => FilePath -> C.Sink B.ByteString m ()
+asyncBzip2ToFile fname = C.bracketP
+    (openFile fname WriteMode)
+    hClose
+    asyncBzip2To
+
+-- | A source which produces the bzipped2 content from the the given handle.
+-- Note that this "reads ahead" so if you do not use all the input, the Handle
+-- will probably be left at an undefined position in the file.
+--
+-- See also 'asyncGzipFromFile'
+asyncBzip2From :: forall m. (MonadIO m, MonadResource m, MonadBaseControl IO m) => Handle -> C.Source m B.ByteString
+asyncBzip2From h = do
+    let prod q = do
+                    C.runConduit $
+                        C.sourceHandle h
+#ifndef WINDOWS
+                            .| CZ.multiple CZ.bunzip2
+#else
+                            .| error "bzip2 decompression is not available on Windows"
+#endif
+                            .| CL.map Just
+                            .| CA.sinkTBQueue q
+                    liftIO $ atomically (TQ.writeTBQueue q Nothing)
+    CA.gatherFrom 8 prod .| untilNothing
+
+-- | Open and read a bzip2 file with the uncompression being performed in a
+-- separate thread.
+--
+-- See also 'asyncGzipFrom'
+asyncBzip2FromFile :: forall m. (MonadResource m, MonadBaseControl IO m) => FilePath -> C.Source m B.ByteString
+asyncBzip2FromFile fname = C.bracketP
+    (openFile fname ReadMode)
+    hClose
+    asyncBzip2From
+
+-- | A simple sink which performs lzma/xz compression in a separate thread and
+-- writes the results to `h`.
+--
+-- See also 'asyncGzipToFile'
+asyncXzTo :: forall m. (MonadIO m, MonadResource m, MonadBaseControl IO m) => Handle -> C.Sink B.ByteString m ()
+asyncXzTo h = do
+    let drain q = C.runConduit $
+                CA.sourceTBQueue q
+                    .| untilNothing
+                    .| CL.map (B.concat . reverse)
+                    .| CX.compress Nothing
+                    .| C.sinkHandle h
+    bsConcatTo ((2 :: Int) ^ (15 :: Int))
+        .| CA.drainTo 8 drain
+
+-- | Compresses the output and writes to the given file with compression being
+-- performed in a separate thread.
+--
+-- See also 'asyncGzipTo'
+asyncXzToFile :: forall m. (MonadResource m, MonadBaseControl IO m) => FilePath -> C.Sink B.ByteString m ()
+asyncXzToFile fname = C.bracketP
+    (openFile fname WriteMode)
+    hClose
+    asyncXzTo
+
+-- | A source which produces the unxzipped content from the the given handle.
+-- Note that this "reads ahead" so if you do not use all the input, the Handle
+-- will probably be left at an undefined position in the file.
+--
+-- See also 'asyncGzipFromFile'
+asyncXzFrom :: forall m. (MonadIO m, MonadResource m, MonadBaseControl IO m) => Handle -> C.Source m B.ByteString
+asyncXzFrom h = do
+    let oneGBmembuffer = Just $ 1024 ^ (3 :: Integer)
+        prod q = do
+                    C.runConduit $
+                        C.sourceHandle h
+                            .| CZ.multiple (CX.decompress oneGBmembuffer)
+                            .| CL.map Just
+                            .| CA.sinkTBQueue q
+                    liftIO $ atomically (TQ.writeTBQueue q Nothing)
+    CA.gatherFrom 8 prod .| untilNothing
+
+
+-- | Open and read a lzma/xz file with the uncompression being performed in a
+-- separate thread.
+--
+-- See also 'asyncXzFrom'
+asyncXzFromFile :: forall m. (MonadResource m, MonadBaseControl IO m) => FilePath -> C.Source m B.ByteString
+asyncXzFromFile fname = C.bracketP
+    (openFile fname ReadMode)
+    hClose
+    asyncXzFrom
+
 -- | If the filename indicates a gzipped file (or, on Unix, also a bz2 file),
 -- then it reads it and uncompresses it.
 --
@@ -238,12 +359,13 @@ asyncGzipFromFile fname = C.bracketP
 conduitPossiblyCompressedFile :: (MonadBaseControl IO m, MonadResource m) => FilePath -> C.Source m B.ByteString
 conduitPossiblyCompressedFile fname
     | ".gz" `isSuffixOf` fname = asyncGzipFromFile fname
-    | ".xz" `isSuffixOf` fname = C.sourceFile fname .| CX.decompress oneGBmembuffer
-#ifndef WINDOWS
-    | ".bz2" `isSuffixOf` fname = C.sourceFile fname .| CZ.bunzip2
-#else
-    | ".bz2" `isSuffixOf` fname = error "bzip2 decompression is not available on Windows"
-#endif
+    | ".xz" `isSuffixOf` fname = asyncXzFromFile fname
+    | ".bz2" `isSuffixOf` fname = asyncBzip2FromFile fname
     | otherwise = C.sourceFile fname
-        where oneGBmembuffer = Just $ 1024 * 1024 * 1024
 
+conduitPossiblyCompressedToFile :: (MonadBaseControl IO m, MonadResource m) => FilePath -> C.Sink B.ByteString m ()
+conduitPossiblyCompressedToFile fname
+    | ".gz" `isSuffixOf` fname = asyncGzipToFile fname
+    | ".xz" `isSuffixOf` fname = asyncXzToFile fname
+    | ".bz2" `isSuffixOf` fname = asyncBzip2ToFile fname
+    | otherwise = C.sinkFile fname
