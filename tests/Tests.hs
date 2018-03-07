@@ -33,6 +33,14 @@ testingFileNameGZ :: FilePath
 testingFileNameGZ = "file_just_for_testing_delete_me_please.gz"
 testingFileNameGZ2 :: FilePath
 testingFileNameGZ2 = "file_just_for_testing_delete_me_please_2.gz"
+testingFileNameBZ2 :: FilePath
+testingFileNameBZ2 = "file_just_for_testing_delete_me_please.bz2"
+testingFileNameBZ22 :: FilePath
+testingFileNameBZ22 = "file_just_for_testing_delete_me_please_2.bz2"
+testingFileNameXZ :: FilePath
+testingFileNameXZ = "file_just_for_testing_delete_me_please.xz"
+testingFileNameXZ2 :: FilePath
+testingFileNameXZ2 = "file_just_for_testing_delete_me_please_2.xz"
 
 extract c = C.runConduitPure (c .| CC.sinkList)
 
@@ -120,6 +128,20 @@ case_asyncGzip = do
     r @?= "Hello World"
     removeFile testingFileNameGZ
 
+case_asyncBzip2 :: IO ()
+case_asyncBzip2 = do
+    C.runConduitRes (CC.yieldMany ["Hello", " ", "World"] .| CAlg.asyncBzip2ToFile testingFileNameBZ2)
+    r <- B.concat <$> (extractIO (CAlg.asyncBzip2FromFile testingFileNameBZ2))
+    r @?= "Hello World"
+    removeFile testingFileNameBZ2
+
+case_asyncXz :: IO ()
+case_asyncXz = do
+    C.runConduitRes (CC.yieldMany ["Hello", " ", "World"] .| CAlg.asyncXzToFile testingFileNameXZ)
+    r <- B.concat <$> (extractIO (CAlg.asyncXzFromFile testingFileNameXZ))
+    r @?= "Hello World"
+    removeFile testingFileNameXZ
+
 
 case_async_gzip_to_from = do
     let testdata = [0 :: Int .. 12]
@@ -136,6 +158,38 @@ case_async_gzip_to_from = do
             .| CL.map (read . B8.unpack)
     removeFile testingFileNameGZ
     removeFile testingFileNameGZ2
+
+case_async_bzip2_to_from = do
+    let testdata = [0 :: Int .. 12]
+    C.runConduitRes $
+        CC.yieldMany testdata
+            .| CL.map (B8.pack . (\n -> show n ++ "\n"))
+            .| CAlg.asyncBzip2ToFile testingFileNameBZ2
+    C.runConduitRes $
+        CAlg.asyncBzip2FromFile testingFileNameBZ2
+        .| CAlg.asyncBzip2ToFile testingFileNameBZ22
+    shouldProduceIO testdata $
+        CAlg.asyncBzip2FromFile testingFileNameBZ22
+            .| CB.lines
+            .| CL.map (read . B8.unpack)
+    removeFile testingFileNameBZ2
+    removeFile testingFileNameBZ22
+
+case_async_xz_to_from = do
+    let testdata = [0 :: Int .. 12]
+    C.runConduitRes $
+        CC.yieldMany testdata
+            .| CL.map (B8.pack . (\n -> show n ++ "\n"))
+            .| CAlg.asyncXzToFile testingFileNameXZ
+    C.runConduitRes $
+        CAlg.asyncXzFromFile testingFileNameXZ
+        .| CAlg.asyncXzToFile testingFileNameXZ2
+    shouldProduceIO testdata $
+        CAlg.asyncXzFromFile testingFileNameXZ2
+            .| CB.lines
+            .| CL.map (read . B8.unpack)
+    removeFile testingFileNameXZ
+    removeFile testingFileNameXZ2
 
 case_asyncFilterLines = do
     vals <- extractIO (CC.yieldMany ["This is\nMy data\nBut"," sometimes","\nit is split,\n","in weird ways."] .| CAlg.asyncFilterLinesC 2 (B8.notElem ','))
