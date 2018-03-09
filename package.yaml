@@ -32,6 +32,7 @@ dependencies:
   - conduit-extra
   - containers
   - deepseq
+  - monad-control
   - mtl
   - resourcet
   - streaming-commons
