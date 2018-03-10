@@ -32,7 +32,6 @@ dependencies:
   - conduit-extra
   - containers
   - deepseq
-  - lzma-conduit
   - mtl
   - resourcet
   - streaming-commons
@@ -40,6 +39,14 @@ dependencies:
   - stm-conduit >= 2.7
   - vector
   - transformers
+
+when:
+  - condition: ! 'os(windows)'
+    then:
+     cpp-options: -DWINDOWS
+    else:
+     dependencies:
+     - lzma-conduit
 
 library:
   exposed-modules:

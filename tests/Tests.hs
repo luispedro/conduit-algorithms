@@ -1,7 +1,7 @@
 {- Copyright 2017-2018 Luis Pedro Coelho
  - License: MIT
  -}
-{-# LANGUAGE TemplateHaskell, QuasiQuotes, FlexibleContexts, OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell, CPP, QuasiQuotes, FlexibleContexts, OverloadedStrings #-}
 module Main where
 
 import Test.Framework.TH
@@ -18,6 +18,7 @@ import qualified Data.Vector.Storable as VS
 import           Data.Conduit ((.|))
 import           Data.List (sort)
 import           System.Directory (removeFile)
+import           Control.Exception (catch, ErrorCall)
 import           Control.Monad (forM_)
 
 import qualified Data.Conduit.Algorithms as CAlg
@@ -50,6 +51,17 @@ shouldProduce values cond = extract cond @?= values
 shouldProduceIO values cond = do
     p <- extractIO cond
     p @?= values
+
+assertError :: IO f -> IO ()
+assertError f = do
+    errored <- catch (f >> pure False) handler
+    if errored then
+        pure ()
+    else
+        assertFailure "Expected error but none was triggered"
+    where
+        handler :: ErrorCall -> IO Bool
+        handler _ = pure True
 
 case_uniqueC = extract (CC.yieldMany [1,2,3,1,1,2,3] .| CAlg.uniqueC) @=? [1,2,3 :: Int]
 case_mergeC = shouldProduce expected $
@@ -136,7 +148,11 @@ case_asyncBzip2 = do
     removeFile testingFileNameBZ2
 
 case_asyncXz :: IO ()
+#ifdef WINDOWS
+case_asyncXz = assertError $ do
+#else
 case_asyncXz = do
+#endif
     C.runConduitRes (CC.yieldMany ["Hello", " ", "World"] .| CAlg.asyncXzToFile testingFileNameXZ)
     r <- B.concat <$> (extractIO (CAlg.asyncXzFromFile testingFileNameXZ))
     r @?= "Hello World"
@@ -175,7 +191,11 @@ case_async_bzip2_to_from = do
     removeFile testingFileNameBZ2
     removeFile testingFileNameBZ22
 
+#ifdef WINDOWS
+case_async_xz_to_from = assertError $ do
+#else
 case_async_xz_to_from = do
+#endif
     let testdata = [0 :: Int .. 12]
     C.runConduitRes $
         CC.yieldMany testdata
