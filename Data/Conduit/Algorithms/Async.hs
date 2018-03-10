@@ -41,10 +41,7 @@ import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Zlib as CZ
 import qualified Data.Conduit.Lzma as CX
 import qualified Data.Streaming.Zlib as SZ
-#ifndef WINDOWS
--- bzlib cannot compile on Windows (as of 2016/07/05)
 import qualified Data.Conduit.BZlib as CZ
-#endif
 import qualified Data.Conduit as C
 import           Data.Conduit ((.|))
 
@@ -248,11 +245,7 @@ asyncBzip2To h = do
                 CA.sourceTBQueue q
                     .| untilNothing
                     .| CL.map (B.concat . reverse)
-#ifndef WINDOWS
                     .| CZ.bzip2
-#else
-                    .| error "bzip2 compression is not available on Windows"
-#endif
                     .| C.sinkHandle h
     bsConcatTo ((2 :: Int) ^ (15 :: Int))
         .| CA.drainTo 8 drain
@@ -277,11 +270,7 @@ asyncBzip2From h = do
     let prod q = do
                     C.runConduit $
                         C.sourceHandle h
-#ifndef WINDOWS
                             .| CZ.multiple CZ.bunzip2
-#else
-                            .| error "bzip2 decompression is not available on Windows"
-#endif
                             .| CL.map Just
                             .| CA.sinkTBQueue q
                     liftIO $ atomically (TQ.writeTBQueue q Nothing)
