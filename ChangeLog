@@ -1,3 +1,7 @@
+Version 0.0.7.3 2018-03-12 by luispedro
+	* Add xz support (patches by Renato Alves)
+	* Add bzip2 support on Windows (patches by Renato Alves)
+
 Version 0.0.7.2 2018-02-19 by luispedro
 	* Add handle information to error message to Handle in asyncGzipFrom
 
