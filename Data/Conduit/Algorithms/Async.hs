@@ -1,6 +1,6 @@
 {-|
 Module      : Data.Conduit.Algorithms.Async
-Copyright   : 2013-2017 Luis Pedro Coelho
+Copyright   : 2013-2018 Luis Pedro Coelho
 License     : MIT
 Maintainer  : luis@luispedro.org
 
@@ -50,10 +50,11 @@ import           Data.Conduit ((.|))
 import qualified Data.Sequence as Seq
 import           Data.Sequence ((|>), ViewL(..))
 import           Data.Foldable (toList)
-import           Control.Monad (forM_)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Error.Class (MonadError(..))
-import           Control.Monad.Trans.Resource (MonadResource, MonadBaseControl)
+import           Control.Monad.IO.Unlift (MonadUnliftIO)
+import           Control.Monad.Trans.Resource (MonadResource)
+import           Control.Monad.Catch (MonadThrow)
 import           Control.Exception (evaluate, displayException)
 import           Control.DeepSeq (NFData, force)
 import           System.IO.Error (mkIOError, userErrorType)
@@ -121,7 +122,7 @@ asyncMapCHelper isSynchronous maxThreads f = initLoop (0 :: Int) (Seq.empty :: S
         yAll :: Seq.Seq (A.Async b) -> C.Conduit a m b
         yAll q = case Seq.viewl q of
             EmptyL -> return ()
-            v :< rest -> (liftIO (A.wait v) >>= yieldOrCleanup rest) >> yAll rest
+            v :< rest -> (liftIO (A.wait v) >>= C.yield) >> yAll rest
 
         loop :: Seq.Seq (A.Async b) -> C.Conduit a m b
         loop q = C.await >>= \case
@@ -129,11 +130,8 @@ asyncMapCHelper isSynchronous maxThreads f = initLoop (0 :: Int) (Seq.empty :: S
                 Just v -> do
                     v' <- sched v
                     (r, q') <- liftIO $ retrieveResult q
-                    yieldOrCleanup q' r
+                    C.yield r
                     loop (q' |> v')
-        cleanup :: Seq.Seq (A.Async b) -> m ()
-        cleanup q = liftIO $ forM_ q A.cancel
-        yieldOrCleanup q = flip C.yieldOr (cleanup q)
 
         retrieveResult :: Seq.Seq (A.Async b) -> IO (b, Seq.Seq (A.Async b))
         retrieveResult q
@@ -188,7 +186,7 @@ untilNothing = C.await >>= \case
 -- writes the results to `h`.
 --
 -- See also 'asyncGzipToFile'
-asyncGzipTo :: forall m. (MonadIO m, MonadBaseControl IO m) => Handle -> C.Sink B.ByteString m ()
+asyncGzipTo :: forall m. (MonadIO m, MonadUnliftIO m) => Handle -> C.Sink B.ByteString m ()
 asyncGzipTo h = do
     let drain q = liftIO . C.runConduit $
                 CA.sourceTBQueue q
@@ -203,7 +201,7 @@ asyncGzipTo h = do
 -- performed in a separate thread.
 --
 -- See also 'asyncGzipTo'
-asyncGzipToFile :: forall m. (MonadResource m, MonadBaseControl IO m) => FilePath -> C.Sink B.ByteString m ()
+asyncGzipToFile :: forall m. (MonadResource m, MonadUnliftIO m) => FilePath -> C.Sink B.ByteString m ()
 asyncGzipToFile fname = C.bracketP
     (openFile fname WriteMode)
     hClose
@@ -214,7 +212,7 @@ asyncGzipToFile fname = C.bracketP
 -- will probably be left at an undefined position in the file.
 --
 -- See also 'asyncGzipFromFile'
-asyncGzipFrom :: forall m. (MonadIO m, MonadResource m, MonadBaseControl IO m) => Handle -> C.Source m B.ByteString
+asyncGzipFrom :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m) => Handle -> C.Source m B.ByteString
 asyncGzipFrom h = do
     let prod q = liftIO $ do
                     C.runConduit $
@@ -231,7 +229,7 @@ asyncGzipFrom h = do
 -- separate thread.
 --
 -- See also 'asyncGzipFrom'
-asyncGzipFromFile :: forall m. (MonadResource m, MonadBaseControl IO m) => FilePath -> C.Source m B.ByteString
+asyncGzipFromFile :: forall m. (MonadResource m, MonadUnliftIO m) => FilePath -> C.Source m B.ByteString
 asyncGzipFromFile fname = C.bracketP
     (openFile fname ReadMode)
     hClose
@@ -241,7 +239,7 @@ asyncGzipFromFile fname = C.bracketP
 -- writes the results to `h`.
 --
 -- See also 'asyncGzipToFile'
-asyncBzip2To :: forall m. (MonadIO m, MonadResource m, MonadBaseControl IO m) => Handle -> C.Sink B.ByteString m ()
+asyncBzip2To :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m) => Handle -> C.Sink B.ByteString m ()
 asyncBzip2To h = do
     let drain q = C.runConduit $
                 CA.sourceTBQueue q
@@ -256,7 +254,7 @@ asyncBzip2To h = do
 -- performed in a separate thread.
 --
 -- See also 'asyncGzipTo'
-asyncBzip2ToFile :: forall m. (MonadResource m, MonadBaseControl IO m) => FilePath -> C.Sink B.ByteString m ()
+asyncBzip2ToFile :: forall m. (MonadResource m, MonadUnliftIO m) => FilePath -> C.Sink B.ByteString m ()
 asyncBzip2ToFile fname = C.bracketP
     (openFile fname WriteMode)
     hClose
@@ -267,7 +265,7 @@ asyncBzip2ToFile fname = C.bracketP
 -- will probably be left at an undefined position in the file.
 --
 -- See also 'asyncGzipFromFile'
-asyncBzip2From :: forall m. (MonadIO m, MonadResource m, MonadBaseControl IO m) => Handle -> C.Source m B.ByteString
+asyncBzip2From :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m) => Handle -> C.Source m B.ByteString
 asyncBzip2From h = do
     let prod q = do
                     C.runConduit $
@@ -282,7 +280,7 @@ asyncBzip2From h = do
 -- separate thread.
 --
 -- See also 'asyncGzipFrom'
-asyncBzip2FromFile :: forall m. (MonadResource m, MonadBaseControl IO m) => FilePath -> C.Source m B.ByteString
+asyncBzip2FromFile :: forall m. (MonadResource m, MonadUnliftIO m) => FilePath -> C.Source m B.ByteString
 asyncBzip2FromFile fname = C.bracketP
     (openFile fname ReadMode)
     hClose
@@ -292,7 +290,7 @@ asyncBzip2FromFile fname = C.bracketP
 -- writes the results to `h`.
 --
 -- See also 'asyncGzipToFile'
-asyncXzTo :: forall m. (MonadIO m, MonadResource m, MonadBaseControl IO m) => Handle -> C.Sink B.ByteString m ()
+asyncXzTo :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m) => Handle -> C.Sink B.ByteString m ()
 asyncXzTo h = do
     let drain q = C.runConduit $
                 CA.sourceTBQueue q
@@ -311,7 +309,7 @@ asyncXzTo h = do
 -- performed in a separate thread.
 --
 -- See also 'asyncGzipTo'
-asyncXzToFile :: forall m. (MonadResource m, MonadBaseControl IO m) => FilePath -> C.Sink B.ByteString m ()
+asyncXzToFile :: forall m. (MonadResource m, MonadUnliftIO m) => FilePath -> C.Sink B.ByteString m ()
 asyncXzToFile fname = C.bracketP
     (openFile fname WriteMode)
     hClose
@@ -322,7 +320,7 @@ asyncXzToFile fname = C.bracketP
 -- will probably be left at an undefined position in the file.
 --
 -- See also 'asyncGzipFromFile'
-asyncXzFrom :: forall m. (MonadIO m, MonadResource m, MonadBaseControl IO m) => Handle -> C.Source m B.ByteString
+asyncXzFrom :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m, MonadThrow m) => Handle -> C.Source m B.ByteString
 asyncXzFrom h = do
     let oneGBmembuffer = Just $ 1024 ^ (3 :: Integer)
         prod q = do
@@ -343,7 +341,7 @@ asyncXzFrom h = do
 -- separate thread.
 --
 -- See also 'asyncXzFrom'
-asyncXzFromFile :: forall m. (MonadResource m, MonadBaseControl IO m) => FilePath -> C.Source m B.ByteString
+asyncXzFromFile :: forall m. (MonadResource m, MonadUnliftIO m, MonadThrow m) => FilePath -> C.Source m B.ByteString
 asyncXzFromFile fname = C.bracketP
     (openFile fname ReadMode)
     hClose
@@ -355,14 +353,14 @@ asyncXzFromFile fname = C.bracketP
 -- On Windows, attempting to read from a bzip2 file, results in 'error'.
 --
 -- For the case of gzip, 'asyncGzipFromFile' is used.
-conduitPossiblyCompressedFile :: (MonadBaseControl IO m, MonadResource m) => FilePath -> C.Source m B.ByteString
+conduitPossiblyCompressedFile :: (MonadUnliftIO m, MonadResource m, MonadThrow m) => FilePath -> C.Source m B.ByteString
 conduitPossiblyCompressedFile fname
     | ".gz" `isSuffixOf` fname = asyncGzipFromFile fname
     | ".xz" `isSuffixOf` fname = asyncXzFromFile fname
     | ".bz2" `isSuffixOf` fname = asyncBzip2FromFile fname
     | otherwise = C.sourceFile fname
 
-conduitPossiblyCompressedToFile :: (MonadBaseControl IO m, MonadResource m) => FilePath -> C.Sink B.ByteString m ()
+conduitPossiblyCompressedToFile :: (MonadUnliftIO m, MonadResource m) => FilePath -> C.Sink B.ByteString m ()
 conduitPossiblyCompressedToFile fname
     | ".gz" `isSuffixOf` fname = asyncGzipToFile fname
     | ".xz" `isSuffixOf` fname = asyncXzToFile fname

@@ -1,6 +1,6 @@
 {-|
 Module      : Data.Conduit.Algorithms
-Copyright   : 2013-2017 Luis Pedro Coelho
+Copyright   : 2013-2018 Luis Pedro Coelho
 License     : MIT
 Maintainer  : luis@luispedro.org
 
@@ -80,10 +80,10 @@ removeRepeatsC = awaitJust removeRepeatsC'
 mergeC :: (Ord a, Monad m) => [C.Source m a] -> C.Source m a
 mergeC [a] = a
 mergeC [a,b] = mergeC2 a b
-mergeC cs = CI.ConduitM $ \rest -> let
+mergeC cs = CI.ConduitT $ \rest -> let
         go [] = rest ()
-        go allc@(CI.HaveOutput c_next _ v:larger) =
-            CI.HaveOutput (norm1 c_next >>= go . insert1 larger) (finalizeAll allc) v
+        go (CI.HaveOutput c_next v:larger) =
+            CI.HaveOutput (norm1 c_next >>= go . insert1 larger)  v
         go _ = error "This situation should have been impossible (mergeC/go)"
         insert1 larger CI.Done{} = larger
         insert1 larger c = insertBy compareHO c larger
@@ -95,13 +95,10 @@ mergeC cs = CI.ConduitM $ \rest -> let
         norm1 (CI.Leftover next ()) = norm1 next
         isHO CI.HaveOutput{} = True
         isHO _ = False
-        compareHO (CI.HaveOutput _ _ a) (CI.HaveOutput _ _ b) = compare a b
+        compareHO (CI.HaveOutput _ a) (CI.HaveOutput _ b) = compare a b
         compareHO _ _ = error "This situation should have been impossible (mergeC/compareHO)"
-        finalizeAll [] = return ()
-        finalizeAll (CI.HaveOutput _ f _ : larger) = f >> finalizeAll larger
-        finalizeAll (_ :larger) = finalizeAll larger
     in do
-        let st = map (($ CI.Done) . CI.unConduitM) cs
+        let st = map (($ CI.Done) . CI.unConduitT) cs
         st' <- mapM norm1 st
         go . sortBy compareHO . filter isHO $ st'
 
@@ -110,12 +107,12 @@ mergeC cs = CI.ConduitM $ \rest -> let
 --
 -- See 'mergeC'
 mergeC2 :: (Ord a, Monad m) => C.Source m a -> C.Source m a -> C.Source m a
-mergeC2 (CI.ConduitM s1) (CI.ConduitM s2) = CI.ConduitM $ \rest -> let
-        go right@(CI.HaveOutput s1' f1 v1) left@(CI.HaveOutput s2' f2 v2)
-            | v1 <= v2 = CI.HaveOutput (go s1' left) (f1 >> f2) v1
-            | otherwise = CI.HaveOutput (go right s2') (f1 >> f2) v2
-        go right@CI.Done{} (CI.HaveOutput s f v) = CI.HaveOutput (go right s) f v
-        go (CI.HaveOutput s f v) left@CI.Done{}  = CI.HaveOutput (go s left)  f v
+mergeC2 (CI.ConduitT s1) (CI.ConduitT s2) = CI.ConduitT $ \rest -> let
+        go right@(CI.HaveOutput s1' v1) left@(CI.HaveOutput s2' v2)
+            | v1 <= v2 = CI.HaveOutput (go s1' left) v1
+            | otherwise = CI.HaveOutput (go right s2') v2
+        go right@CI.Done{} (CI.HaveOutput s v) = CI.HaveOutput (go right s) v
+        go (CI.HaveOutput s v) left@CI.Done{}  = CI.HaveOutput (go s left)  v
         go CI.Done{} CI.Done{} = rest ()
         go (CI.PipeM p) left = do
             next <- lift p

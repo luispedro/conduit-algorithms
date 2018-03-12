@@ -22,7 +22,7 @@ import           System.Directory (removeFile)
 import           Control.Exception (catch, ErrorCall)
 import           Control.Monad (forM_)
 import           Control.Monad.Trans.Resource.Internal (ResourceT)
-import           Control.Monad.Trans.Control (MonadBaseControl)
+import           Control.Monad.IO.Unlift (MonadUnliftIO)
 
 import qualified Data.Conduit.Algorithms as CAlg
 import qualified Data.Conduit.Algorithms.Storable as CAlg
@@ -49,7 +49,7 @@ testingFileNameXZ2 = "file_just_for_testing_delete_me_please_2.xz"
 extract :: C.ConduitM () b FID.Identity () -> [b]
 extract c = C.runConduitPure (c .| CC.sinkList)
 
-extractIO :: MonadBaseControl IO m => C.ConduitM () b (ResourceT m) () -> m [b]
+extractIO :: MonadUnliftIO m => C.ConduitM () b (ResourceT m) () -> m [b]
 extractIO c = C.runConduitRes (c .| CC.sinkList)
 
 shouldProduce :: (Show b, Eq b) => [b] -> C.ConduitM () b FID.Identity () -> Assertion
