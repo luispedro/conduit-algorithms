@@ -33,6 +33,7 @@ dependencies:
   - containers
   - deepseq
   - exceptions
+  - lz4-conduit
   - lzma-conduit
   - monad-control
   - mtl
