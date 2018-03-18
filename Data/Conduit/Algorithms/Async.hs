@@ -238,7 +238,7 @@ asyncGzipFromFile fname = C.bracketP
 -- | A simple sink which performs bzip2 compression in a separate thread and
 -- writes the results to `h`.
 --
--- See also 'asyncGzipToFile'
+-- See also 'asyncBzip2ToFile'
 asyncBzip2To :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m) => Handle -> C.Sink B.ByteString m ()
 asyncBzip2To h = do
     let drain q = C.runConduit $
@@ -253,7 +253,7 @@ asyncBzip2To h = do
 -- | Compresses the output and writes to the given file with compression being
 -- performed in a separate thread.
 --
--- See also 'asyncGzipTo'
+-- See also 'asyncBzip2To'
 asyncBzip2ToFile :: forall m. (MonadResource m, MonadUnliftIO m) => FilePath -> C.Sink B.ByteString m ()
 asyncBzip2ToFile fname = C.bracketP
     (openFile fname WriteMode)
@@ -264,7 +264,7 @@ asyncBzip2ToFile fname = C.bracketP
 -- Note that this "reads ahead" so if you do not use all the input, the Handle
 -- will probably be left at an undefined position in the file.
 --
--- See also 'asyncGzipFromFile'
+-- See also 'asyncBzip2FromFile'
 asyncBzip2From :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m) => Handle -> C.Source m B.ByteString
 asyncBzip2From h = do
     let prod q = do
@@ -279,7 +279,7 @@ asyncBzip2From h = do
 -- | Open and read a bzip2 file with the uncompression being performed in a
 -- separate thread.
 --
--- See also 'asyncGzipFrom'
+-- See also 'asyncBzip2From'
 asyncBzip2FromFile :: forall m. (MonadResource m, MonadUnliftIO m) => FilePath -> C.Source m B.ByteString
 asyncBzip2FromFile fname = C.bracketP
     (openFile fname ReadMode)
@@ -289,7 +289,7 @@ asyncBzip2FromFile fname = C.bracketP
 -- | A simple sink which performs lzma/xz compression in a separate thread and
 -- writes the results to `h`.
 --
--- See also 'asyncGzipToFile'
+-- See also 'asyncXzToFile'
 asyncXzTo :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m) => Handle -> C.Sink B.ByteString m ()
 asyncXzTo h = do
     let drain q = C.runConduit $
@@ -308,7 +308,7 @@ asyncXzTo h = do
 -- | Compresses the output and writes to the given file with compression being
 -- performed in a separate thread.
 --
--- See also 'asyncGzipTo'
+-- See also 'asyncXzTo'
 asyncXzToFile :: forall m. (MonadResource m, MonadUnliftIO m) => FilePath -> C.Sink B.ByteString m ()
 asyncXzToFile fname = C.bracketP
     (openFile fname WriteMode)
@@ -319,7 +319,7 @@ asyncXzToFile fname = C.bracketP
 -- Note that this "reads ahead" so if you do not use all the input, the Handle
 -- will probably be left at an undefined position in the file.
 --
--- See also 'asyncGzipFromFile'
+-- See also 'asyncXzFromFile'
 asyncXzFrom :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m, MonadThrow m) => Handle -> C.Source m B.ByteString
 asyncXzFrom h = do
     let oneGBmembuffer = Just $ 1024 ^ (3 :: Integer)
@@ -351,8 +351,6 @@ asyncXzFromFile fname = C.bracketP
 -- then it reads it and uncompresses it.
 --
 -- On Windows, attempting to read from a bzip2 file, results in 'error'.
---
--- For the case of gzip, 'asyncGzipFromFile' is used.
 conduitPossiblyCompressedFile :: (MonadUnliftIO m, MonadResource m, MonadThrow m) => FilePath -> C.Source m B.ByteString
 conduitPossiblyCompressedFile fname
     | ".gz" `isSuffixOf` fname = asyncGzipFromFile fname
@@ -360,6 +358,10 @@ conduitPossiblyCompressedFile fname
     | ".bz2" `isSuffixOf` fname = asyncBzip2FromFile fname
     | otherwise = C.sourceFile fname
 
+-- | If the filename indicates a gzipped file (or, on Unix, also a bz2 file),
+-- then it compresses and write with the algorithm matching the filename
+--
+-- On Windows, attempting to write to a bzip2 file, results in 'error'.
 conduitPossiblyCompressedToFile :: (MonadUnliftIO m, MonadResource m) => FilePath -> C.Sink B.ByteString m ()
 conduitPossiblyCompressedToFile fname
     | ".gz" `isSuffixOf` fname = asyncGzipToFile fname
