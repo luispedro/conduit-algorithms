@@ -33,6 +33,7 @@ dependencies:
   - containers
   - deepseq
   - exceptions
+  - lzma-conduit
   - monad-control
   - mtl
   - resourcet
@@ -45,11 +46,7 @@ dependencies:
 
 when:
   - condition: ! 'os(windows)'
-    then:
-     cpp-options: -DWINDOWS
-    else:
-     dependencies:
-     - lzma-conduit
+    cpp-options: -DWINDOWS
 
 library:
   exposed-modules:

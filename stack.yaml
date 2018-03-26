@@ -2,7 +2,8 @@ resolver: lts-11.0
 
 packages:
 - .
-extra-deps: []
+extra-deps:
+- lzma-clib-5.2.2
 
 flags: {}
 

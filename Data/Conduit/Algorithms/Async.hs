@@ -39,9 +39,7 @@ import qualified Data.Conduit.Async as CA
 import qualified Data.Conduit.TQueue as CA
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Zlib as CZ
-#ifndef WINDOWS
 import qualified Data.Conduit.Lzma as CX
-#endif
 import qualified Data.Streaming.Zlib as SZ
 import qualified Data.Conduit.BZlib as CZ
 import qualified Data.Conduit as C
@@ -296,11 +294,7 @@ asyncXzTo h = do
                 CA.sourceTBQueue q
                     .| untilNothing
                     .| CL.map (B.concat . reverse)
-#ifndef WINDOWS
                     .| CX.compress Nothing
-#else
-                    .| error "lzma/xz compression is not available on Windows"
-#endif
                     .| C.sinkHandle h
     bsConcatTo ((2 :: Int) ^ (15 :: Int))
         .| CA.drainTo 8 drain
@@ -326,11 +320,7 @@ asyncXzFrom h = do
         prod q = do
                     C.runConduit $
                         C.sourceHandle h
-#ifndef WINDOWS
                             .| CZ.multiple (CX.decompress oneGBmembuffer)
-#else
-                            .| error "lzma/xz decompression is not available on Windows"
-#endif
                             .| CL.map Just
                             .| CA.sinkTBQueue q
                     liftIO $ atomically (TQ.writeTBQueue q Nothing)
