@@ -166,11 +166,7 @@ case_asyncBzip2 = do
     removeFile testingFileNameBZ2
 
 case_asyncXz :: IO ()
-#ifdef WINDOWS
-case_asyncXz = assertError $ do
-#else
 case_asyncXz = do
-#endif
     C.runConduitRes (CC.yieldMany ["Hello", " ", "World"] .| CAlg.asyncXzToFile testingFileNameXZ)
     r <- B.concat <$> extractIO (CAlg.asyncXzFromFile testingFileNameXZ)
     r @?= "Hello World"
@@ -211,11 +207,7 @@ case_async_bzip2_to_from = do
     removeFile testingFileNameBZ22
 
 case_async_xz_to_from :: IO ()
-#ifdef WINDOWS
-case_async_xz_to_from = assertError $ do
-#else
 case_async_xz_to_from = do
-#endif
     let testdata = [0 :: Int .. 12]
     C.runConduitRes $
         CC.yieldMany testdata
