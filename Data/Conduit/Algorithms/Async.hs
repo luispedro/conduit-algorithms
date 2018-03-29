@@ -118,9 +118,12 @@ asyncMapCHelper isSynchronous maxThreads f = initLoop (0 :: Int) (Seq.empty :: S
 
         -- | yield all
         yAll :: Seq.Seq (A.Async b) -> C.Conduit a m b
-        yAll q = case Seq.viewl q of
-            EmptyL -> return ()
-            v :< rest -> (liftIO (A.wait v) >>= C.yield) >> yAll rest
+        yAll q
+            | Seq.null q = return ()
+            | otherwise = do
+                (r, q') <- liftIO $ retrieveResult q
+                C.yield r
+                yAll q'
 
         loop :: Seq.Seq (A.Async b) -> C.Conduit a m b
         loop q = C.await >>= \case
