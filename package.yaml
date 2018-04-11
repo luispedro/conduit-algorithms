@@ -68,3 +68,12 @@ tests:
       - test-framework
       - test-framework-hunit
       - test-framework-th
+
+benchmarks:
+  conduit-algorithms-bench:
+    main: Bench.hs
+    source-dirs: ./bench
+    other-modules: []
+    dependencies:
+    - conduit-algorithms
+    - criterion

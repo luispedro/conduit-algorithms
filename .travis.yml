@@ -19,6 +19,7 @@ env:
 
 script:
   - stack test
+  - ./run-benchmarks.sh
 
 addons:
   apt:
