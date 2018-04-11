@@ -1,3 +1,4 @@
 /.stack-work/
 /dist/
 conduit-algorithms.cabal
+test_data

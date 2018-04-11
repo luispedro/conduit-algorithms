@@ -21,6 +21,7 @@ default-extensions:
  - TupleSections
 ghc-options:
  - -Wall
+ - -O2
 
 dependencies:
   - base > 4.8 && < 5
@@ -77,3 +78,11 @@ benchmarks:
     dependencies:
     - conduit-algorithms
     - criterion
+    ghc-options:
+    - -Wall
+    - -fwarn-tabs
+    - -fno-warn-missing-signatures
+    - -threaded
+    - -rtsopts
+    - ! '"-with-rtsopts=-A64m -n4m -H"'
+
