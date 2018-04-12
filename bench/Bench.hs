@@ -41,10 +41,15 @@ main = defaultMain
         [ bench "mergeC2" $ nfConduit (CAlg.mergeC2 (progress 1 1000) (progress 30 2000) .| CL.fold (+) (0 :: Int))
         , bench "mergeC_3" $ nfConduit (CAlg.mergeC [progress 1 1000, progress 30 2000, progress 7 9] .| CL.fold (+) (0 :: Int))
         ]
-    , bgroup "async-uncompress"
+    , bgroup "async-compress"
         [ bench "asyncGzipToFile" $ nfConduit (CB.sourceFile "test_data/input.txt" .| CAlg.asyncGzipToFile "test_data/output.txt.gz")
         , bench "asyncBzip2ToFile" $ nfConduit (CB.sourceFile "test_data/input.txt" .| CAlg.asyncBzip2ToFile "test_data/output.txt.gz")
         , bench "asyncXzToFile" $ nfConduit (CB.sourceFile "test_data/input.txt" .| CAlg.asyncXzToFile "test_data/output.txt.gz")
+        ]
+    , bgroup "async-uncompress"
+        [ bench "baseline" $ nfConduit (CB.sourceFile "test_data/input.txt" .| CB.sinkFile "test_data/output.txt")
+        , bench "asyncGzipFromFile" $ nfConduit (CAlg.conduitPossiblyCompressedFile "test_data/input.txt.gz" .| CB.sinkFile "test_data/output.txt")
+        , bench "asyncBzip2FromFile" $ nfConduit (CAlg.conduitPossiblyCompressedFile "test_data/input.txt.bz2" .| CB.sinkFile "test_data/output.txt")
         ]
     , bgroup "async-map"
         [ bench "filterlines" $ nfConduit (CB.sourceFile "test_data/input.txt" .| CB.lines .| CL.filter (\line -> (read . B8.unpack $ line) > (1000 :: Int)) .| countC)
