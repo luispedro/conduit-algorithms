@@ -40,6 +40,7 @@ main = defaultMain
     [ bgroup "merge"
         [ bench "mergeC2" $ nfConduit (CAlg.mergeC2 (progress 1 1000) (progress 30 2000) .| CL.fold (+) (0 :: Int))
         , bench "mergeC_3" $ nfConduit (CAlg.mergeC [progress 1 1000, progress 30 2000, progress 7 9] .| CL.fold (+) (0 :: Int))
+        , bench "mergeC_1000" $ nfConduit (CAlg.mergeC [progress 1 n | n <- [1 .. 2000]] .| CL.fold (+) (0 :: Int))
         ]
     , bgroup "async-compress"
         [ bench "asyncGzipToFile" $ nfConduit (CB.sourceFile "test_data/input.txt" .| CAlg.asyncGzipToFile "test_data/output.txt.gz")

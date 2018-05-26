@@ -87,6 +87,20 @@ case_mergeC = shouldProduce expected $
         i2 = [ 1, 4, 4, 5]
         i3 = [-1, 0, 7]
 
+case_mergeCrepeated :: Assertion
+case_mergeCrepeated = shouldProduce expected $
+                            CAlg.mergeC
+                                [ CC.yieldMany i1
+                                , CC.yieldMany i2
+                                , CC.yieldMany i3
+                                , CC.yieldMany i3
+                                ]
+    where
+        expected = sort (concat [i1, i2, i3, i3])
+        i1 = [1, 2, 3, 4 :: Int]
+        i2 = i1
+        i3 = i1
+
 case_mergeCmonad :: Assertion
 case_mergeCmonad = shouldProduce expected $
                             CAlg.mergeC

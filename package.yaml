@@ -37,6 +37,7 @@ dependencies:
   - lzma-conduit
   - monad-control
   - mtl
+  - pqueue
   - resourcet
   - streaming-commons
   - stm
