@@ -20,7 +20,7 @@ import qualified Data.Conduit.Internal as CI
 import qualified Data.Set as S
 import qualified Data.PQueue.Prio.Min as PQ
 import           Control.Monad.Trans.Class (lift)
-import           Data.Maybe (mapMaybe)
+import           Control.Monad (foldM)
 
 import           Data.Conduit.Algorithms.Utils (awaitJust)
 
@@ -82,25 +82,18 @@ mergeC [a,b] = mergeC2 a b
 mergeC cs = CI.ConduitT $ \rest -> let
         go q = case PQ.minView q of
             Nothing -> rest()
-            Just (CI.HaveOutput c_next v, q') -> CI.HaveOutput (norm1 c_next >>= go . insert1 q')  v
+            Just (CI.HaveOutput c_next v, q') -> CI.HaveOutput (norm1insert q' c_next >>= go)  v
             _ -> error "This situation should have been impossible (mergeC/go)"
-        -- insert1 & norm1 should be merged together, removing the ugly `error` call:
-        insert1 larger CI.Done{} = larger
-        insert1 larger c@(CI.HaveOutput _ v) = PQ.insert v c larger
-        insert1 larger _ = error "This situation should have been impossible (mergeC/insert1)"
-        norm1 :: Monad m => CI.Pipe () i o () m () -> CI.Pipe () i o () m (CI.Pipe () i o () m ())
-        norm1 c@CI.HaveOutput{} = return c
-        norm1 c@CI.Done{} = return c
-        norm1 (CI.PipeM p) = lift p >>= norm1
-        norm1 (CI.NeedInput _ next) = norm1 (next ())
-        norm1 (CI.Leftover next ()) = norm1 next
-        getOutput c@(CI.HaveOutput _ v) = Just (v,c)
-        getOutput _ = Nothing
+        norm1insert :: (Monad m, Ord o) => PQ.MinPQueue o (CI.Pipe () i o () m ()) -> CI.Pipe () i o () m () -> CI.Pipe () i o () m (PQ.MinPQueue o (CI.Pipe () i o () m ()))
+        norm1insert q c@(CI.HaveOutput _ v) = return (PQ.insert v c q)
+        norm1insert q c@CI.Done{} = return q
+        norm1insert q (CI.PipeM p) = lift p >>= norm1insert q
+        norm1insert q (CI.NeedInput _ next) = norm1insert q (next ())
+        norm1insert q (CI.Leftover next ()) = norm1insert q next
     in do
         let st = map (($ CI.Done) . CI.unConduitT) cs
-        st' <- mapM norm1 st
-        go . PQ.fromList . mapMaybe getOutput $ st'
-
+        init <- foldM norm1insert PQ.empty st
+        go init
 
 -- | Take two sorted sources and merge them.
 --
