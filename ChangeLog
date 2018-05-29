@@ -1,4 +1,4 @@
-Version 0.0.8.0+
+Version 0.0.8.1 2018-05-29 by luispedro
 	* faster mergeC (use a priority queue instead of an ordered list)
 
 Version 0.0.8.0 2018-03-12 by luispedro
