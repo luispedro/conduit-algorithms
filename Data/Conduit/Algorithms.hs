@@ -34,7 +34,7 @@ import           Data.Conduit.Algorithms.Utils (awaitJust)
 -- it uses a 'Data.Set' to store previously seen elements. Thus, memory usage
 -- is O(N) and time is O(N log N). If the input is sorted, you can use
 -- 'removeRepeatsC'
-uniqueOnC :: (Ord b, Monad m) => (a -> b) -> C.Conduit a m a
+uniqueOnC :: (Ord b, Monad m) => (a -> b) -> C.ConduitT a a m ()
 uniqueOnC f = checkU (S.empty :: S.Set b)
     where
         checkU cur = awaitJust $ \val ->
@@ -46,7 +46,7 @@ uniqueOnC f = checkU (S.empty :: S.Set b)
 -- | Unique conduit
 --
 -- See 'uniqueOnC' and 'removeRepeatsC'
-uniqueC :: (Ord a, Monad m) => C.Conduit a m a
+uniqueC :: (Ord a, Monad m) => C.ConduitT a a m ()
 uniqueC = uniqueOnC id
 
 -- | Removes repeated elements
@@ -58,7 +58,7 @@ uniqueC = uniqueOnC id
 -- is equivalent to @[0, 1, 2, 0]@
 --
 -- See 'uniqueC' and 'uniqueOnC'
-removeRepeatsC :: (Eq a, Monad m) => C.Conduit a m a
+removeRepeatsC :: (Eq a, Monad m) => C.ConduitT a a m ()
 removeRepeatsC = awaitJust removeRepeatsC'
     where
         removeRepeatsC' prev = C.await >>= \case
@@ -76,7 +76,7 @@ removeRepeatsC = awaitJust removeRepeatsC'
 -- all elements in sorted order.
 --
 -- See 'mergeC2'
-mergeC :: (Ord a, Monad m) => [C.Source m a] -> C.Source m a
+mergeC :: (Ord a, Monad m) => [C.ConduitT () a m ()] -> C.ConduitT () a m ()
 mergeC [a] = a
 mergeC [a,b] = mergeC2 a b
 mergeC cs = CI.ConduitT $ \rest -> let
@@ -86,19 +86,18 @@ mergeC cs = CI.ConduitT $ \rest -> let
             _ -> error "This situation should have been impossible (mergeC/go)"
         norm1insert :: (Monad m, Ord o) => PQ.MinPQueue o (CI.Pipe () i o () m ()) -> CI.Pipe () i o () m () -> CI.Pipe () i o () m (PQ.MinPQueue o (CI.Pipe () i o () m ()))
         norm1insert q c@(CI.HaveOutput _ v) = return (PQ.insert v c q)
-        norm1insert q c@CI.Done{} = return q
+        norm1insert q CI.Done{} = return q
         norm1insert q (CI.PipeM p) = lift p >>= norm1insert q
         norm1insert q (CI.NeedInput _ next) = norm1insert q (next ())
         norm1insert q (CI.Leftover next ()) = norm1insert q next
     in do
         let st = map (($ CI.Done) . CI.unConduitT) cs
-        init <- foldM norm1insert PQ.empty st
-        go init
+        go =<< foldM norm1insert PQ.empty st
 
 -- | Take two sorted sources and merge them.
 --
 -- See 'mergeC'
-mergeC2 :: (Ord a, Monad m) => C.Source m a -> C.Source m a -> C.Source m a
+mergeC2 :: (Ord a, Monad m) => C.ConduitT () a m () -> C.ConduitT () a m () -> C.ConduitT () a m ()
 mergeC2 (CI.ConduitT s1) (CI.ConduitT s2) = CI.ConduitT $ \rest -> let
         go right@(CI.HaveOutput s1' v1) left@(CI.HaveOutput s2' v2)
             | v1 <= v2 = CI.HaveOutput (go s1' left) v1

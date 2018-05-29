@@ -28,12 +28,12 @@ import           Control.Monad (unless)
 --
 -- This is a simple utility adapted from
 -- http://neilmitchell.blogspot.de/2015/07/thoughts-on-conduits.html
-awaitJust :: Monad m => (a -> C.Conduit a m b) -> C.Conduit a m b
+awaitJust :: Monad m => (a -> C.ConduitT a b m ()) -> C.ConduitT a b m ()
 awaitJust f = C.await >>= maybe (return ()) f
 {-# INLINE awaitJust #-}
 
 -- | Conduit analogue to Python's enumerate function
-enumerateC :: Monad m => C.Conduit a m (Int, a)
+enumerateC :: Monad m => C.ConduitT a (Int, a) m ()
 enumerateC = enumerateC' 0
     where
         enumerateC' !i = awaitJust $ \v -> do
@@ -53,7 +53,7 @@ enumerateC = enumerateC' 0
 -- results in @[ [0,1,2], [3,4,5], [6,7,8], [9, 10] ]@
 --
 -- This function is deprecated; use 'Data.Conduit.List.chunksOf'
-groupC :: (Monad m) => Int -> C.Conduit a m [a]
+groupC :: (Monad m) => Int -> C.ConduitT a [a] m ()
 groupC n = loop n []
     where
         loop 0 ps = C.yield (reverse ps) >> loop n []

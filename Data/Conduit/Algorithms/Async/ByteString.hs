@@ -44,14 +44,14 @@ import           Control.DeepSeq
 -- Only Unix-style ASCII lines are supported (splitting at Bytes with value
 -- 10, i.e., \\n). When Windows lines (\\r\\n) are passed to this function, this
 -- results in each element having an extra \\r at the end.
-asyncMapLineGroupsC :: (MonadIO m, NFData a) => Int -> ([B.ByteString] -> a) -> C.Conduit B.ByteString m a
+asyncMapLineGroupsC :: (MonadIO m, NFData a) => Int -> ([B.ByteString] -> a) -> C.ConduitT B.ByteString a m ()
 asyncMapLineGroupsC nthreads f = breakAtLineBoundary .| CAlg.asyncMapC nthreads (f . asLines)
     where
         asLines :: BL.ByteString -> [B.ByteString]
         asLines = fmap BL.toStrict . BL.split 10
 
         -- The purpose is to break input blocks at a line boundary
-        breakAtLineBoundary :: Monad m => C.Conduit B.ByteString m BL.ByteString
+        breakAtLineBoundary :: Monad m => C.ConduitT B.ByteString BL.ByteString m ()
         breakAtLineBoundary = continue BL.empty
         continue prev = C.await >>= \case
                     Nothing -> unless (BL.null prev) $
@@ -72,7 +72,7 @@ asyncMapLineGroupsC nthreads f = breakAtLineBoundary .| CAlg.asyncMapC nthreads 
 --      CB.lines .| CL.filer f
 -- @
 --
-asyncFilterLinesC :: MonadIO m => Int -> (B.ByteString -> Bool) -> C.Conduit B.ByteString m B.ByteString
+asyncFilterLinesC :: MonadIO m => Int -> (B.ByteString -> Bool) -> C.ConduitT B.ByteString B.ByteString m ()
 asyncFilterLinesC n f = asyncMapLineGroupsC n (filter f) .| CL.concat
 {-# INLINE asyncFilterLinesC #-}
 

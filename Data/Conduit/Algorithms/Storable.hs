@@ -33,7 +33,7 @@ import           Data.Conduit ((.|))
 -- This uses the same format as in-memory
 --
 -- See 'readStorableV'
-writeStorableV :: forall m a. (MonadIO m, Monad m, Storable a) => C.Conduit (VS.Vector a) m B.ByteString
+writeStorableV :: forall m a. (MonadIO m, Monad m, Storable a) => C.ConduitT (VS.Vector a) B.ByteString m ()
 writeStorableV = CL.mapM (liftIO. encodeStorable')
     where
         encodeStorable' :: Storable a => VS.Vector a -> IO B.ByteString
@@ -54,7 +54,7 @@ readStorableV nelems = CC.chunksOfE blockBytes .| parseBlocks
         a' = undefined
 
 
-        parseBlocks :: MonadIO m => C.Conduit B.ByteString m (VS.Vector a)
+        parseBlocks :: MonadIO m => C.ConduitT B.ByteString (VS.Vector a) m ()
         parseBlocks = C.awaitForever $ \bs -> do
             let (n,rest) = B.length bs `divMod` sizeOf a'
             r <- liftIO $ do
