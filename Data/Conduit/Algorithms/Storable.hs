@@ -4,7 +4,7 @@ Copyright   : 2018 Luis Pedro Coelho
 License     : MIT
 Maintainer  : luis@luispedro.org
 
-Higher level async processing interfaces.
+Read/write Storable vectors
 -}
 {-# LANGUAGE FlexibleContexts, ScopedTypeVariables #-}
 module Data.Conduit.Algorithms.Storable
@@ -43,7 +43,11 @@ writeStorableV = CL.mapM (liftIO. encodeStorable')
 
 -- | read a Storable vector
 --
--- This expects the same format as the in-memory vector
+-- This expects the same format as the in-memory vector.
+--
+-- This will break up the incoming data into vectors of the given size. The
+-- last vector may be smaller if there is not enough data. Any unconsumed Bytes
+-- will be leftover for the next conduit in the pipeline.
 --
 -- See 'writeStorableV'
 readStorableV :: forall m a. (MonadIO m, Storable a) => Int -> C.ConduitM B.ByteString (VS.Vector a) m ()
