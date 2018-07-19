@@ -177,8 +177,8 @@ bsConcatTo chunkSize = awaitJust start
                 | otherwise -> continue (v:chunks) (s + B.length v)
 
 untilNothing :: forall m i. (Monad m) => C.ConduitT (Maybe i) i m ()
-untilNothing = C.await >>= \case
-    Just (Just val) -> do
+untilNothing = awaitJust $ \case
+    Just val -> do
         C.yield val
         untilNothing
     _ -> return ()
