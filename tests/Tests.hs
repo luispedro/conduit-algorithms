@@ -41,6 +41,10 @@ testingFileNameBZ2 :: FilePath
 testingFileNameBZ2 = "file_just_for_testing_delete_me_please.bz2"
 testingFileNameBZ22 :: FilePath
 testingFileNameBZ22 = "file_just_for_testing_delete_me_please_2.bz2"
+testingFileNameLZ4 :: FilePath
+testingFileNameLZ4 = "file_just_for_testing_delete_me_please.lz4"
+testingFileNameLZ42 :: FilePath
+testingFileNameLZ42 = "file_just_for_testing_delete_me_please_2.lz4"
 testingFileNameXZ :: FilePath
 testingFileNameXZ = "file_just_for_testing_delete_me_please.xz"
 testingFileNameXZ2 :: FilePath
@@ -179,6 +183,13 @@ case_asyncBzip2 = do
     r @?= "Hello World"
     removeFile testingFileNameBZ2
 
+case_asyncLz4 :: IO ()
+case_asyncLz4 = do
+    C.runConduitRes (CC.yieldMany ["Hello", " ", "World"] .| CAlg.asyncLz4ToFile testingFileNameLZ4)
+    r <- B.concat <$> extractIO (CAlg.asyncLz4FromFile testingFileNameLZ4)
+    r @?= "Hello World"
+    removeFile testingFileNameLZ4
+
 case_asyncXz :: IO ()
 case_asyncXz = do
     C.runConduitRes (CC.yieldMany ["Hello", " ", "World"] .| CAlg.asyncXzToFile testingFileNameXZ)
@@ -219,6 +230,23 @@ case_async_bzip2_to_from = do
             .| CL.map (read . B8.unpack)
     removeFile testingFileNameBZ2
     removeFile testingFileNameBZ22
+
+case_async_lz4_to_from :: IO ()
+case_async_lz4_to_from = do
+    let testdata = [0 :: Int .. 12]
+    C.runConduitRes $
+        CC.yieldMany testdata
+            .| CL.map (B8.pack . (\n -> show n ++ "\n"))
+            .| CAlg.asyncLz4ToFile testingFileNameLZ4
+    C.runConduitRes $
+        CAlg.asyncLz4FromFile testingFileNameLZ4
+        .| CAlg.asyncLz4ToFile testingFileNameLZ42
+    shouldProduceIO testdata $
+        CAlg.asyncLz4FromFile testingFileNameLZ42
+            .| CB.lines
+            .| CL.map (read . B8.unpack)
+    removeFile testingFileNameLZ4
+    removeFile testingFileNameLZ42
 
 case_async_xz_to_from :: IO ()
 case_async_xz_to_from = do

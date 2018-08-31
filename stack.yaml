@@ -3,6 +3,7 @@ resolver: lts-11.4
 packages:
 - .
 extra-deps:
+- lz4-conduit-0.3
 - lzma-clib-5.2.2
 
 flags: {}

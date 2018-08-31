@@ -21,6 +21,10 @@ module Data.Conduit.Algorithms.Async
     , asyncBzip2ToFile
     , asyncBzip2From
     , asyncBzip2FromFile
+    , asyncLz4To
+    , asyncLz4ToFile
+    , asyncLz4From
+    , asyncLz4FromFile
     , asyncXzTo
     , asyncXzToFile
     , asyncXzFrom
@@ -40,6 +44,7 @@ import qualified Data.Conduit.TQueue as CA
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Zlib as CZ
 import qualified Data.Conduit.Lzma as CX
+import qualified Data.Conduit.LZ4 as C4
 import qualified Data.Streaming.Zlib as SZ
 import qualified Data.Conduit.BZlib as CZ
 import qualified Data.Conduit as C
@@ -340,6 +345,57 @@ asyncXzFromFile fname = C.bracketP
     hClose
     asyncXzFrom
 
+-- | A simple sink which performs lz4 compression in a separate thread and
+-- writes the results to `h`.
+--
+-- See also 'asyncLz4ToFile'
+asyncLz4To :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m) => Handle -> C.ConduitT B.ByteString C.Void m ()
+asyncLz4To h = do
+    let drain q = C.runConduit $
+                CA.sourceTBQueue q
+                    .| untilNothing
+                    .| CL.map (B.concat . reverse)
+                    .| C4.compress Nothing  -- Nothing = default acceleration
+                    .| C.sinkHandle h
+    bsConcatTo ((2 :: Int) ^ (15 :: Int))
+        .| CA.drainTo 8 drain
+
+-- | Compresses the output and writes to the given file with compression being
+-- performed in a separate thread.
+--
+-- See also 'asyncLz4To'
+asyncLz4ToFile :: forall m. (MonadResource m, MonadUnliftIO m) => FilePath -> C.ConduitT B.ByteString C.Void m ()
+asyncLz4ToFile fname = C.bracketP
+    (openFile fname WriteMode)
+    hClose
+    asyncLz4To
+-- | A source which produces the un-lz4 content from the the given handle.
+-- Note that this "reads ahead" so if you do not use all the input, the Handle
+-- will probably be left at an undefined position in the file.
+--
+-- See also 'asyncLz4FromFile'
+asyncLz4From :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m, MonadThrow m) => Handle -> C.ConduitT () B.ByteString m ()
+asyncLz4From h = do
+    let prod q = do
+                    C.runConduit $
+                        C.sourceHandle h
+                            .| CZ.multiple C4.decompress
+                            .| CL.map Just
+                            .| CA.sinkTBQueue q
+                    liftIO $ atomically (TQ.writeTBQueue q Nothing)
+    CA.gatherFrom 8 prod .| untilNothing
+
+
+-- | Open and read a lz4 file with the uncompression being performed in a
+-- separate thread.
+--
+-- See also 'asyncLz4From'
+asyncLz4FromFile :: forall m. (MonadResource m, MonadUnliftIO m, MonadThrow m) => FilePath -> C.ConduitT () B.ByteString m ()
+asyncLz4FromFile fname = C.bracketP
+    (openFile fname ReadMode)
+    hClose
+    asyncLz4From
+
 -- | If the filename indicates a gzipped file (or, on Unix, also a bz2 file),
 -- then it reads it and uncompresses it.
 --
@@ -347,6 +403,7 @@ asyncXzFromFile fname = C.bracketP
 conduitPossiblyCompressedFile :: (MonadUnliftIO m, MonadResource m, MonadThrow m) => FilePath -> C.ConduitT () B.ByteString m ()
 conduitPossiblyCompressedFile fname
     | ".gz" `isSuffixOf` fname = asyncGzipFromFile fname
+    | ".lz4" `isSuffixOf` fname = asyncLz4FromFile fname
     | ".xz" `isSuffixOf` fname = asyncXzFromFile fname
     | ".bz2" `isSuffixOf` fname = asyncBzip2FromFile fname
     | otherwise = C.sourceFile fname
@@ -358,6 +415,7 @@ conduitPossiblyCompressedFile fname
 conduitPossiblyCompressedToFile :: (MonadUnliftIO m, MonadResource m) => FilePath -> C.ConduitT B.ByteString C.Void m ()
 conduitPossiblyCompressedToFile fname
     | ".gz" `isSuffixOf` fname = asyncGzipToFile fname
+    | ".lz4" `isSuffixOf` fname = asyncLz4ToFile fname
     | ".xz" `isSuffixOf` fname = asyncXzToFile fname
     | ".bz2" `isSuffixOf` fname = asyncBzip2ToFile fname
     | otherwise = C.sinkFile fname
