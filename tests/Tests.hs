@@ -22,6 +22,7 @@ import           System.Directory (removeFile)
 import           Control.Exception (catch, ErrorCall)
 import           Control.Monad (forM_)
 import           Control.Monad.Trans.Resource.Internal (ResourceT)
+import qualified Control.Monad.Trans.Resource as R
 import           Control.Monad.IO.Unlift (MonadUnliftIO)
 
 import qualified Data.Conduit.Algorithms as CAlg
@@ -202,6 +203,19 @@ case_async_gzip_to_from = do
             .| CL.map (read . B8.unpack)
     removeFile testingFileNameGZ
     removeFile testingFileNameGZ2
+
+case_withPossiblyCompressedFile :: IO ()
+case_withPossiblyCompressedFile = do
+    let testdata = [0 :: Int .. 12]
+    C.runConduitRes $
+        CC.yieldMany testdata
+            .| CL.map (B8.pack . (\n -> show n ++ "\n"))
+            .| CAlg.asyncGzipToFile testingFileNameGZ
+    back <- R.runResourceT $
+                CAlg.withPossiblyCompressedFile testingFileNameGZ $ \src ->
+                    C.runConduit (src .| CB.lines .| CL.map (read . B8.unpack) .| CC.sinkList)
+    removeFile testingFileNameGZ
+    back @?= testdata
 
 case_async_bzip2_to_from :: IO ()
 case_async_bzip2_to_from = do

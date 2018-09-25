@@ -1,3 +1,6 @@
+Version 0.0.8.1+
+	* Add withPossiblyCompressedFile function for prompt resource deallocation
+
 Version 0.0.8.1 2018-05-29 by luispedro
 	* faster mergeC (use a priority queue instead of an ordered list)
 

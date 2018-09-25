@@ -11,6 +11,7 @@ Higher level async processing interfaces.
 module Data.Conduit.Algorithms.Async
     ( conduitPossiblyCompressedFile
     , conduitPossiblyCompressedToFile
+    , withPossiblyCompressedFile
     , asyncMapC
     , asyncMapEitherC
     , asyncGzipTo
@@ -50,13 +51,14 @@ import           Data.Sequence ((|>), ViewL(..))
 import           Data.Foldable (toList)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Error.Class (MonadError(..))
-import           Control.Monad.IO.Unlift (MonadUnliftIO)
+import           Control.Monad.IO.Unlift (MonadUnliftIO, withRunInIO)
 import           Control.Monad.Trans.Resource (MonadResource)
 import           Control.Monad.Catch (MonadThrow)
 import           Control.Exception (evaluate, displayException)
 import           Control.DeepSeq (NFData, force)
 import           System.IO.Error (mkIOError, userErrorType)
 import           System.IO
+import qualified System.IO as IO
 import           Data.List (isSuffixOf)
 import           Data.Conduit.Algorithms.Utils (awaitJust)
 
@@ -340,8 +342,41 @@ asyncXzFromFile fname = C.bracketP
     hClose
     asyncXzFrom
 
+
+-- | If the filename indicates a supported compressed file (gzip, xz, and, on
+-- Unix, bzip2), then it reads it and uncompresses it.
+--
+-- Usage
+--
+-- @
+--
+--      withPossiblyCompressedFile fname $ \src ->
+--          src .| mySink
+-- @
+--
+-- Unlike 'conduitPossiblyCompressedFile', this ensures that the file is closed
+-- even if the conduit terminates early.
+--
+-- On Windows, attempting to read from a bzip2 file, results in 'error'.
+withPossiblyCompressedFile :: (MonadUnliftIO m, MonadResource m, MonadThrow m) => FilePath -> (C.ConduitT () B.ByteString m () -> m a) -> m a
+withPossiblyCompressedFile fname inner = withRunInIO $ \run -> do
+    IO.withBinaryFile fname IO.ReadMode $
+        run . inner . withPossiblyCompressedFile' fname
+
+withPossiblyCompressedFile' :: (MonadUnliftIO m, MonadResource m, MonadThrow m) => FilePath -> Handle -> C.ConduitT () B.ByteString m ()
+withPossiblyCompressedFile' fname
+    | ".gz" `isSuffixOf` fname = asyncGzipFrom
+    | ".xz" `isSuffixOf` fname = asyncXzFrom
+    | ".bz2" `isSuffixOf` fname = asyncBzip2From
+    | otherwise = C.sourceHandle
+
+
 -- | If the filename indicates a gzipped file (or, on Unix, also a bz2 file),
 -- then it reads it and uncompresses it.
+--
+--
+-- To ensure that the file is closed even if the downstream finishes early,
+-- consider using 'withPossiblyCompressedFile'.
 --
 -- On Windows, attempting to read from a bzip2 file, results in 'error'.
 conduitPossiblyCompressedFile :: (MonadUnliftIO m, MonadResource m, MonadThrow m) => FilePath -> C.ConduitT () B.ByteString m ()
