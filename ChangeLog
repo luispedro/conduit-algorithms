@@ -1,4 +1,4 @@
-Version 0.0.8.1+
+Version 0.0.8.2 2018-09-27 by luispedro
 	* Add withPossiblyCompressedFile function for prompt resource deallocation
 
 Version 0.0.8.1 2018-05-29 by luispedro
