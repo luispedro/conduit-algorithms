@@ -46,6 +46,8 @@ testingFileNameXZ :: FilePath
 testingFileNameXZ = "file_just_for_testing_delete_me_please.xz"
 testingFileNameXZ2 :: FilePath
 testingFileNameXZ2 = "file_just_for_testing_delete_me_please_2.xz"
+testingFileNameZstd :: FilePath
+testingFileNameZstd = "file_just_for_testing_delete_me_please.zs"
 
 extract :: C.ConduitM () b FID.Identity () -> [b]
 extract c = C.runConduitPure (c .| CC.sinkList)
@@ -266,6 +268,13 @@ case_async_xz_to_from = do
             .| CL.map (read . B8.unpack)
     removeFile testingFileNameXZ
     removeFile testingFileNameXZ2
+
+case_async_zstd_to_from :: IO ()
+case_async_zstd_to_from = do
+    C.runConduitRes (CC.yieldMany ["Hello", " ", "World"] .| CAlg.asyncZstdToFile testingFileNameZstd)
+    r <- B.concat <$> extractIO (CAlg.asyncZstdFromFile testingFileNameZstd)
+    r @?= "Hello World"
+    removeFile testingFileNameZstd
 
 case_asyncFilterLines :: IO ()
 case_asyncFilterLines = do

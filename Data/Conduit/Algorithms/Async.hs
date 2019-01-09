@@ -26,6 +26,10 @@ module Data.Conduit.Algorithms.Async
     , asyncXzToFile
     , asyncXzFrom
     , asyncXzFromFile
+    , asyncZstdTo
+    , asyncZstdToFile
+    , asyncZstdFrom
+    , asyncZstdFromFile
     , unorderedAsyncMapC
     ) where
 
@@ -43,6 +47,7 @@ import qualified Data.Conduit.Zlib as CZ
 import qualified Data.Conduit.Lzma as CX
 import qualified Data.Streaming.Zlib as SZ
 import qualified Data.Conduit.BZlib as CBZ
+import qualified Data.Conduit.Zstd as CZstd
 import qualified Control.Monad.Trans.Resource as R
 import qualified Data.Conduit as C
 import           Data.Conduit ((.|))
@@ -318,7 +323,6 @@ asyncXzFrom =
     let oneGBmembuffer = Just $ 1024 ^ (3 :: Integer)
     in genericAsyncFrom (CX.decompress oneGBmembuffer)
 
-
 -- | Open and read a lzma/xz file with the uncompression being performed in a
 -- separate thread.
 --
@@ -326,6 +330,34 @@ asyncXzFrom =
 asyncXzFromFile :: forall m. (MonadResource m, MonadUnliftIO m, MonadThrow m) => FilePath -> C.ConduitT () B.ByteString m ()
 asyncXzFromFile = genericFromFile asyncXzFrom
 
+-- | Decompress ZStd format using a separate thread
+--
+-- See also 'asyncZstdFromFile'
+asyncZstdFrom :: forall m. (MonadIO m, MonadUnliftIO m) => Handle -> C.ConduitT () B.ByteString m ()
+asyncZstdFrom = genericAsyncFrom CZstd.decompress
+
+-- | Compress in ZStd format using a separate thread and write to a file
+-- See also 'asyncZstdFrom'
+asyncZstdFromFile :: forall m. (MonadResource m, MonadUnliftIO m, MonadThrow m) => FilePath -> C.ConduitT () B.ByteString m ()
+asyncZstdFromFile = genericFromFile asyncZstdFrom
+
+
+-- | Compress in Zstd format using a separate thread
+-- 
+-- See also 'asyncZstdToFile'
+asyncZstdTo :: forall m. (MonadIO m, MonadUnliftIO m) =>
+                Int -- ^ compression level
+                -> Handle -> C.ConduitT B.ByteString C.Void m ()
+asyncZstdTo clevel = genericAsyncTo (CZstd.compress clevel)
+
+
+-- | Compress in ZStd format using a separate thread and write to a file
+--
+-- This will use compression level 3 as this is the default in the ZStd C API
+--
+-- See also 'asyncZstdTo'
+asyncZstdToFile :: forall m. (MonadResource m, MonadUnliftIO m) => FilePath -> C.ConduitT B.ByteString C.Void m ()
+asyncZstdToFile = genericToFile (asyncZstdTo 3)
 
 -- | If the filename indicates a supported compressed file (gzip, xz, and, on
 -- Unix, bzip2), then it reads it and uncompresses it.
