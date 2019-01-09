@@ -1,5 +1,5 @@
 name:               conduit-algorithms
-version:            0.0.8.2
+version:            0.0.9.0
 synopsis:           Conduit-based algorithms
 category:           Conduit
 author:             Luis Pedro Coelho
@@ -21,7 +21,6 @@ default-extensions:
  - TupleSections
 ghc-options:
  - -Wall
- - -O2
 
 dependencies:
   - base > 4.8 && < 5

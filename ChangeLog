@@ -1,5 +1,5 @@
-Version 0.0.8.2+
-	* Add Zstd compression
+Version 0.0.9.0 2019-01-09 by luispedro
+	* Add Zstandard compression
 	* Refactor internals to avoid code repetition
 
 Version 0.0.8.2 2018-09-27 by luispedro
