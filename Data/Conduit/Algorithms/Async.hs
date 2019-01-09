@@ -210,6 +210,18 @@ genericAsyncTo tranform h = do
         .| CA.drainTo 8 drain
 
 
+genericFromFile :: forall m. (MonadResource m, MonadUnliftIO m) => (Handle -> C.ConduitT () B.ByteString m ()) -> FilePath -> C.ConduitT () B.ByteString m ()
+genericFromFile from fname = C.bracketP
+    (openFile fname ReadMode)
+    hClose
+    from
+
+genericToFile :: forall m. (MonadResource m, MonadUnliftIO m) => (Handle -> C.ConduitT B.ByteString C.Void m ()) -> FilePath -> C.ConduitT B.ByteString C.Void m ()
+genericToFile to fname = C.bracketP
+    (openFile fname WriteMode)
+    hClose
+    to
+
 -- | A simple sink which performs gzip compression in a separate thread and
 -- writes the results to `h`.
 --
@@ -226,10 +238,7 @@ asyncGzipTo h = genericAsyncTo gz h
 --
 -- See also 'asyncGzipTo'
 asyncGzipToFile :: forall m. (MonadResource m, MonadUnliftIO m) => FilePath -> C.ConduitT B.ByteString C.Void m ()
-asyncGzipToFile fname = C.bracketP
-    (openFile fname WriteMode)
-    hClose
-    asyncGzipTo
+asyncGzipToFile = genericToFile asyncGzipTo
 
 -- | A source which produces the ungzipped content from the the given handle.
 -- Note that this "reads ahead" so if you do not use all the input, the Handle
@@ -254,10 +263,7 @@ asyncGzipFrom h = do
 --
 -- See also 'asyncGzipFrom'
 asyncGzipFromFile :: forall m. (MonadResource m, MonadUnliftIO m) => FilePath -> C.ConduitT () B.ByteString m ()
-asyncGzipFromFile fname = C.bracketP
-    (openFile fname ReadMode)
-    hClose
-    asyncGzipFrom
+asyncGzipFromFile = genericFromFile asyncGzipFrom
 
 -- | A simple sink which performs bzip2 compression in a separate thread and
 -- writes the results to `h`.
@@ -271,10 +277,7 @@ asyncBzip2To = genericAsyncTo CBZ.bzip2
 --
 -- See also 'asyncBzip2To'
 asyncBzip2ToFile :: forall m. (MonadResource m, MonadUnliftIO m) => FilePath -> C.ConduitT B.ByteString C.Void m ()
-asyncBzip2ToFile fname = C.bracketP
-    (openFile fname WriteMode)
-    hClose
-    asyncBzip2To
+asyncBzip2ToFile = genericToFile asyncBzip2To
 
 -- | A source which produces the bzipped2 content from the the given handle.
 -- Note that this "reads ahead" so if you do not use all the input, the Handle
@@ -289,10 +292,7 @@ asyncBzip2From = genericAsyncFrom (CZ.multiple CBZ.bunzip2)
 --
 -- See also 'asyncBzip2From'
 asyncBzip2FromFile :: forall m. (MonadResource m, MonadUnliftIO m) => FilePath -> C.ConduitT () B.ByteString m ()
-asyncBzip2FromFile fname = C.bracketP
-    (openFile fname ReadMode)
-    hClose
-    asyncBzip2From
+asyncBzip2FromFile = genericFromFile asyncBzip2From
 
 -- | A simple sink which performs lzma/xz compression in a separate thread and
 -- writes the results to `h`.
@@ -306,10 +306,7 @@ asyncXzTo = genericAsyncTo (CX.compress Nothing)
 --
 -- See also 'asyncXzTo'
 asyncXzToFile :: forall m. (MonadResource m, MonadUnliftIO m) => FilePath -> C.ConduitT B.ByteString C.Void m ()
-asyncXzToFile fname = C.bracketP
-    (openFile fname WriteMode)
-    hClose
-    asyncXzTo
+asyncXzToFile = genericToFile asyncXzTo
 
 -- | A source which produces the unxzipped content from the the given handle.
 -- Note that this "reads ahead" so if you do not use all the input, the Handle
@@ -327,10 +324,7 @@ asyncXzFrom =
 --
 -- See also 'asyncXzFrom'
 asyncXzFromFile :: forall m. (MonadResource m, MonadUnliftIO m, MonadThrow m) => FilePath -> C.ConduitT () B.ByteString m ()
-asyncXzFromFile fname = C.bracketP
-    (openFile fname ReadMode)
-    hClose
-    asyncXzFrom
+asyncXzFromFile = genericFromFile asyncXzFrom
 
 
 -- | If the filename indicates a supported compressed file (gzip, xz, and, on
