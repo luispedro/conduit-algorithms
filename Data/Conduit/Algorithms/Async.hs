@@ -1,6 +1,6 @@
 {-|
 Module      : Data.Conduit.Algorithms.Async
-Copyright   : 2013-2018 Luis Pedro Coelho
+Copyright   : 2013-2019 Luis Pedro Coelho
 License     : MIT
 Maintainer  : luis@luispedro.org
 
@@ -42,7 +42,8 @@ import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Zlib as CZ
 import qualified Data.Conduit.Lzma as CX
 import qualified Data.Streaming.Zlib as SZ
-import qualified Data.Conduit.BZlib as CZ
+import qualified Data.Conduit.BZlib as CBZ
+import qualified Control.Monad.Trans.Resource as R
 import qualified Data.Conduit as C
 import           Data.Conduit ((.|))
 
@@ -185,20 +186,40 @@ untilNothing = awaitJust $ \case
         untilNothing
     _ -> return ()
 
+
+genericAsyncFrom :: forall m. (MonadIO m, MonadUnliftIO m) => C.ConduitT B.ByteString B.ByteString m () -> Handle -> C.ConduitT () B.ByteString m ()
+genericAsyncFrom transform h = do
+    let prod q = do
+                    C.runConduit $
+                        C.sourceHandle h
+                            .| transform
+                            .| CL.map Just
+                            .| CA.sinkTBQueue q
+                    liftIO $ atomically (TQ.writeTBQueue q Nothing)
+    CA.gatherFrom 8 prod .| untilNothing
+
+genericAsyncTo :: forall m. (MonadIO m, MonadUnliftIO m) => C.ConduitT B.ByteString B.ByteString (R.ResourceT IO) () -> Handle -> C.ConduitT B.ByteString C.Void m ()
+genericAsyncTo tranform h = do
+    let drain q = liftIO . C.runConduitRes $
+                CA.sourceTBQueue q
+                    .| untilNothing
+                    .| CL.map (B.concat . reverse)
+                    .| tranform
+                    .| C.sinkHandle h
+    bsConcatTo ((2 :: Int) ^ (15 :: Int))
+        .| CA.drainTo 8 drain
+
+
 -- | A simple sink which performs gzip compression in a separate thread and
 -- writes the results to `h`.
 --
 -- See also 'asyncGzipToFile'
 asyncGzipTo :: forall m. (MonadIO m, MonadUnliftIO m) => Handle -> C.ConduitT B.ByteString C.Void m ()
-asyncGzipTo h = do
-    let drain q = liftIO . C.runConduit $
-                CA.sourceTBQueue q
-                    .| untilNothing
-                    .| CL.map (B.concat . reverse)
-                    .| CZ.gzip
-                    .| C.sinkHandle h
-    bsConcatTo ((2 :: Int) ^ (15 :: Int))
-        .| CA.drainTo 8 drain
+asyncGzipTo h = genericAsyncTo gz h
+    where
+        gz = CZ.gzip `C.catchC` handleZLibException
+        handleZLibException = \(e :: SZ.ZlibException) ->
+                                    liftIO . ioError $ mkIOError userErrorType ("Error compressing gzip stream: "++displayException e) (Just h) Nothing
 
 -- | Compresses the output and writes to the given file with compression being
 -- performed in a separate thread.
@@ -242,16 +263,8 @@ asyncGzipFromFile fname = C.bracketP
 -- writes the results to `h`.
 --
 -- See also 'asyncBzip2ToFile'
-asyncBzip2To :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m) => Handle -> C.ConduitT B.ByteString C.Void m ()
-asyncBzip2To h = do
-    let drain q = C.runConduit $
-                CA.sourceTBQueue q
-                    .| untilNothing
-                    .| CL.map (B.concat . reverse)
-                    .| CZ.bzip2
-                    .| C.sinkHandle h
-    bsConcatTo ((2 :: Int) ^ (15 :: Int))
-        .| CA.drainTo 8 drain
+asyncBzip2To :: forall m. (MonadIO m, MonadUnliftIO m) => Handle -> C.ConduitT B.ByteString C.Void m ()
+asyncBzip2To = genericAsyncTo CBZ.bzip2
 
 -- | Compresses the output and writes to the given file with compression being
 -- performed in a separate thread.
@@ -269,15 +282,7 @@ asyncBzip2ToFile fname = C.bracketP
 --
 -- See also 'asyncBzip2FromFile'
 asyncBzip2From :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m) => Handle -> C.ConduitT () B.ByteString m ()
-asyncBzip2From h = do
-    let prod q = do
-                    C.runConduit $
-                        C.sourceHandle h
-                            .| CZ.multiple CZ.bunzip2
-                            .| CL.map Just
-                            .| CA.sinkTBQueue q
-                    liftIO $ atomically (TQ.writeTBQueue q Nothing)
-    CA.gatherFrom 8 prod .| untilNothing
+asyncBzip2From = genericAsyncFrom (CZ.multiple CBZ.bunzip2)
 
 -- | Open and read a bzip2 file with the uncompression being performed in a
 -- separate thread.
@@ -294,15 +299,7 @@ asyncBzip2FromFile fname = C.bracketP
 --
 -- See also 'asyncXzToFile'
 asyncXzTo :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m) => Handle -> C.ConduitT B.ByteString C.Void m ()
-asyncXzTo h = do
-    let drain q = C.runConduit $
-                CA.sourceTBQueue q
-                    .| untilNothing
-                    .| CL.map (B.concat . reverse)
-                    .| CX.compress Nothing
-                    .| C.sinkHandle h
-    bsConcatTo ((2 :: Int) ^ (15 :: Int))
-        .| CA.drainTo 8 drain
+asyncXzTo = genericAsyncTo (CX.compress Nothing)
 
 -- | Compresses the output and writes to the given file with compression being
 -- performed in a separate thread.
@@ -320,16 +317,9 @@ asyncXzToFile fname = C.bracketP
 --
 -- See also 'asyncXzFromFile'
 asyncXzFrom :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m, MonadThrow m) => Handle -> C.ConduitT () B.ByteString m ()
-asyncXzFrom h = do
+asyncXzFrom =
     let oneGBmembuffer = Just $ 1024 ^ (3 :: Integer)
-        prod q = do
-                    C.runConduit $
-                        C.sourceHandle h
-                            .| CZ.multiple (CX.decompress oneGBmembuffer)
-                            .| CL.map Just
-                            .| CA.sinkTBQueue q
-                    liftIO $ atomically (TQ.writeTBQueue q Nothing)
-    CA.gatherFrom 8 prod .| untilNothing
+    in genericAsyncFrom (CX.decompress oneGBmembuffer)
 
 
 -- | Open and read a lzma/xz file with the uncompression being performed in a

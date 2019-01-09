@@ -1,3 +1,6 @@
+Version 0.0.8.2+
+	* Refactor internals to avoid code repetition
+
 Version 0.0.8.2 2018-09-27 by luispedro
 	* Add withPossiblyCompressedFile function for prompt resource deallocation
 
