@@ -1,4 +1,4 @@
-{- Copyright 2017-2018 Luis Pedro Coelho
+{- Copyright 2017-2019 Luis Pedro Coelho
  - License: MIT
  -}
 {-# LANGUAGE TemplateHaskell, CPP, QuasiQuotes, FlexibleContexts, OverloadedStrings #-}
@@ -172,6 +172,22 @@ case_asyncGzip = do
     r <- B.concat <$> extractIO (CAlg.asyncGzipFromFile testingFileNameGZ)
     r @?= "Hello World"
     removeFile testingFileNameGZ
+
+case_asyncGzipLarge :: IO ()
+case_asyncGzipLarge = do
+    let repeats = 16384 -- large enough to cause the input to be split into blocks inside asyncGzipToFile
+    C.runConduitRes (CC.yieldMany (concat $ replicate repeats ["Hello" :: B.ByteString, " ", "World\n"]) .| CAlg.asyncGzipToFile testingFileNameGZ)
+    let checkHello !n = C.await >>= \case
+                Nothing -> return n
+                Just "Hello World\n" -> checkHello (n + 1)
+                _ -> return (-1)
+    r <- C.runConduitRes $
+                CAlg.asyncGzipFromFile testingFileNameGZ
+                    .| CC.chunksOfE 12
+                    .| checkHello (0 :: Int)
+
+    removeFile testingFileNameGZ
+    r @?= repeats
 
 case_asyncBzip2 :: IO ()
 case_asyncBzip2 = do
