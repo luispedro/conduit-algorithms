@@ -384,6 +384,7 @@ withPossiblyCompressedFile' fname
     | ".gz" `isSuffixOf` fname = asyncGzipFrom
     | ".xz" `isSuffixOf` fname = asyncXzFrom
     | ".bz2" `isSuffixOf` fname = asyncBzip2From
+    | ".zstd" `isSuffixOf` fname = asyncZstdFrom
     | otherwise = C.sourceHandle
 
 
@@ -400,6 +401,7 @@ conduitPossiblyCompressedFile fname
     | ".gz" `isSuffixOf` fname = asyncGzipFromFile fname
     | ".xz" `isSuffixOf` fname = asyncXzFromFile fname
     | ".bz2" `isSuffixOf` fname = asyncBzip2FromFile fname
+    | ".zstd" `isSuffixOf` fname = asyncZstdFromFile fname
     | otherwise = C.sourceFile fname
 
 -- | If the filename indicates a gzipped file (or, on Unix, also a bz2 file),
@@ -411,4 +413,5 @@ conduitPossiblyCompressedToFile fname
     | ".gz" `isSuffixOf` fname = asyncGzipToFile fname
     | ".xz" `isSuffixOf` fname = asyncXzToFile fname
     | ".bz2" `isSuffixOf` fname = asyncBzip2ToFile fname
+    | ".zstd" `isSuffixOf` fname = asyncZstdToFile fname
     | otherwise = C.sinkFile fname

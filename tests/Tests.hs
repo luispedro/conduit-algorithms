@@ -47,7 +47,7 @@ testingFileNameXZ = "file_just_for_testing_delete_me_please.xz"
 testingFileNameXZ2 :: FilePath
 testingFileNameXZ2 = "file_just_for_testing_delete_me_please_2.xz"
 testingFileNameZstd :: FilePath
-testingFileNameZstd = "file_just_for_testing_delete_me_please.zs"
+testingFileNameZstd = "file_just_for_testing_delete_me_please.zstd"
 
 extract :: C.ConduitM () b FID.Identity () -> [b]
 extract c = C.runConduitPure (c .| CC.sinkList)
