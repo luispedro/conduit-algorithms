@@ -12,6 +12,7 @@ module Data.Conduit.Algorithms.Async
     ( conduitPossiblyCompressedFile
     , conduitPossiblyCompressedToFile
     , withPossiblyCompressedFile
+    , withPossiblyCompressedFileOutput
     , asyncMapC
     , asyncMapEitherC
     , asyncGzipTo
@@ -367,7 +368,7 @@ asyncZstdToFile = genericToFile (asyncZstdTo 3)
 -- @
 --
 --      withPossiblyCompressedFile fname $ \src ->
---          src .| mySink
+--          runConduit (src .| mySink)
 -- @
 --
 -- Unlike 'conduitPossiblyCompressedFile', this ensures that the file is closed
@@ -388,6 +389,35 @@ withPossiblyCompressedFile' fname
     | otherwise = C.sourceHandle
 
 
+-- | If the filename indicates a supported compressed file (gzip, xz, and, on
+-- Unix, bzip2), then it provides an output source
+--
+-- Usage
+--
+-- @
+--
+--      withPossiblyCompressedFileOutput fname $ \out ->
+--          runConduit (mySrc .| out)
+-- @
+--
+-- This ensures that the file is closed even if the conduit terminates early.
+--
+-- On Windows, attempting to read from a bzip2 file, results in 'error'.
+withPossiblyCompressedFileOutput :: (MonadUnliftIO m, MonadResource m, MonadThrow m) => FilePath -> (C.ConduitT B.ByteString C.Void m () -> m a) -> m a
+withPossiblyCompressedFileOutput fname inner = withRunInIO $ \run -> do
+    IO.withBinaryFile fname IO.WriteMode $
+        run . inner . withPossiblyCompressedFileOutput' fname
+
+
+withPossiblyCompressedFileOutput' :: (MonadUnliftIO m, MonadResource m, MonadThrow m) => FilePath -> Handle -> C.ConduitT B.ByteString C.Void m ()
+withPossiblyCompressedFileOutput' fname
+    | ".gz" `isSuffixOf` fname = asyncGzipTo
+    | ".xz" `isSuffixOf` fname = asyncXzTo
+    | ".bz2" `isSuffixOf` fname = asyncBzip2To
+    | ".zstd" `isSuffixOf` fname = asyncZstdTo 3
+    | otherwise = C.sinkHandle
+
+
 -- | If the filename indicates a gzipped file (or, on Unix, also a bz2 file),
 -- then it reads it and uncompresses it.
 --
@@ -406,6 +436,8 @@ conduitPossiblyCompressedFile fname
 
 -- | If the filename indicates a gzipped file (or, on Unix, also a bz2 file),
 -- then it compresses and write with the algorithm matching the filename
+--
+-- Consider using 'withPossiblyCompressedFileOutput' to ensure prompt file closing.
 --
 -- On Windows, attempting to write to a bzip2 file, results in 'error'.
 conduitPossiblyCompressedToFile :: (MonadUnliftIO m, MonadResource m) => FilePath -> C.ConduitT B.ByteString C.Void m ()

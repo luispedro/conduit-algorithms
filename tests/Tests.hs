@@ -235,6 +235,21 @@ case_withPossiblyCompressedFile = do
     removeFile testingFileNameGZ
     back @?= testdata
 
+case_withPossiblyCompressedFileOutput :: IO ()
+case_withPossiblyCompressedFileOutput = do
+    let testdata = [0 :: Int .. 14]
+    R.runResourceT $
+        CAlg.withPossiblyCompressedFileOutput testingFileNameGZ $ \sink ->
+            C.runConduit $
+                CC.yieldMany testdata
+                    .| CL.map (B8.pack . (\n -> show n ++ "\n"))
+                    .| sink
+    back <- R.runResourceT $
+                CAlg.withPossiblyCompressedFile testingFileNameGZ $ \src ->
+                    C.runConduit (src .| CB.lines .| CL.map (read . B8.unpack) .| CC.sinkList)
+    removeFile testingFileNameGZ
+    back @?= testdata
+
 case_async_bzip2_to_from :: IO ()
 case_async_bzip2_to_from = do
     let testdata = [0 :: Int .. 12]
