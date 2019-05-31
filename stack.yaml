@@ -1,9 +1,10 @@
-resolver: lts-13.1
+resolver: lts-13.23
 
 packages:
 - .
+
 extra-deps:
-- lzma-clib-5.2.2
+- lzma-clib-5.2.2 # Needed on Windows
 
 flags: {}
 
