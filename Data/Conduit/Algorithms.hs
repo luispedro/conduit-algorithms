@@ -84,7 +84,11 @@ mergeC cs = CI.ConduitT $ \rest -> let
             Nothing -> rest()
             Just (CI.HaveOutput c_next v, q') -> CI.HaveOutput (norm1insert q' c_next >>= go)  v
             _ -> error "This situation should have been impossible (mergeC/go)"
-        norm1insert :: (Monad m, Ord o) => PQ.MinPQueue o (CI.Pipe () i o () m ()) -> CI.Pipe () i o () m () -> CI.Pipe () i o () m (PQ.MinPQueue o (CI.Pipe () i o () m ()))
+        -- norm1insert inserts the pipe in into the queue after ensuring that the pipe is CI.HaveOutput
+        norm1insert :: (Monad m, Ord o)
+                            => PQ.MinPQueue o (CI.Pipe () i o () m ())
+                            -> CI.Pipe () i o () m ()
+                            -> CI.Pipe () i o () m (PQ.MinPQueue o (CI.Pipe () i o () m ()))
         norm1insert q c@(CI.HaveOutput _ v) = return (PQ.insert v c q)
         norm1insert q CI.Done{} = return q
         norm1insert q (CI.PipeM p) = lift p >>= norm1insert q
