@@ -1,6 +1,6 @@
 {-|
 Module      : Data.Conduit.Algorithms.Utils
-Copyright   : 2013-2017 Luis Pedro Coelho
+Copyright   : 2013-2019 Luis Pedro Coelho
 License     : MIT
 Maintainer  : luis@luispedro.org
 
@@ -60,4 +60,4 @@ groupC n = loop n []
         loop c ps = C.await >>= \case
             Nothing -> unless (null ps) $ C.yield (reverse ps)
             Just p -> loop (c-1) (p:ps)
-
+{-# WARNING groupC "This function is deprecated; use 'Data.Conduit.List.chunksOf'" #-}
