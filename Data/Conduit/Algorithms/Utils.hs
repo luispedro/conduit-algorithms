@@ -10,9 +10,12 @@ module Data.Conduit.Algorithms.Utils
     ( awaitJust
     , enumerateC
     , groupC
+    , dispatchC
     ) where
 
 import qualified Data.Conduit as C
+import qualified Data.Conduit.List as CL
+import           Data.Conduit ((.|))
 import           Data.Maybe (maybe)
 import           Control.Monad (unless)
 
@@ -41,7 +44,9 @@ enumerateC = enumerateC' 0
                                         enumerateC' (i + 1)
 {-# INLINE enumerateC #-}
 
--- | groupC yields the input as groups of 'n' elements. If the input is not a
+-- | This function is deprecated; use 'Data.Conduit.List.chunksOf'
+--
+-- groupC yields the input as groups of 'n' elements. If the input is not a
 -- multiple of 'n', the last element will be incomplete
 --
 -- Example:
@@ -52,7 +57,6 @@ enumerateC = enumerateC' 0
 --
 -- results in @[ [0,1,2], [3,4,5], [6,7,8], [9, 10] ]@
 --
--- This function is deprecated; use 'Data.Conduit.List.chunksOf'
 groupC :: (Monad m) => Int -> C.ConduitT a [a] m ()
 groupC n = loop n []
     where
@@ -61,3 +65,27 @@ groupC n = loop n []
             Nothing -> unless (null ps) $ C.yield (reverse ps)
             Just p -> loop (c-1) (p:ps)
 {-# WARNING groupC "This function is deprecated; use 'Data.Conduit.List.chunksOf'" #-}
+
+-- | dispatchC dispatches indexed input to the respective sink
+-- 
+-- Example:
+--
+-- @
+-- 	let input = [(0, "one")
+-- 	            ,(1, "two")
+-- 	            ,(0, "three")
+-- 	            ]
+-- 	    CC.yieldMany .| dispatches [sink1, sink2]
+-- @
+--
+-- Then 'sink1' will receive "one" and "three", while 'sink2' will receive "two"
+--
+-- Out of bounds indices are clipped to the 0..n-1 range (where 'n' is 'length sinks')
+dispatchC :: Monad m => [C.ConduitT a C.Void m r] -> C.ConduitT (Int, a) C.Void m [r]
+dispatchC sinks = C.sequenceSinks [select i .| s | (i,s) <- zip [0..] sinks]
+    where
+        n = length sinks
+        select i = CL.mapMaybe $ \(j,val) ->
+            if j == i || (i == n - 1 && j >= n) || (i == 0 && j < 0)
+                then Just val
+                else Nothing

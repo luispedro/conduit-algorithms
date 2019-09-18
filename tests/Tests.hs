@@ -306,3 +306,20 @@ case_storableVector = do
     let v = VS.fromList [0:: Int, 1, 2, 4, 6, 12]
     vals <- extractIO (CC.yieldMany [v,v,v] .| CAlg.writeStorableV .| CAlg.readStorableV 3)
     VS.concat vals @=? VS.concat [v,v,v]
+
+case_dispatchC :: IO ()
+case_dispatchC = do
+    let v = [(0 :: Int, 0 :: Int),
+                 (0, 1),
+                 (1, 1),
+                 (0, 2),
+                 (-1, 3),
+                 (2, -1),
+                 (2, -1),
+                 (3, -1),
+                 (2, -1)
+                ]
+        acc !n = C.await >>= \case
+                 Nothing -> return n
+                 Just x -> acc (n + x)
+    C.runConduitPure (CC.yieldMany v .| CAlg.dispatchC [acc i | i <- [0 :: Int ..2]]) @=? [6,2,-2 :: Int]
