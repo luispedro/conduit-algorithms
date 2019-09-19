@@ -1,6 +1,6 @@
-Version 0.0.10.1+
-	* Add deprecation warning for groupC
+Version 0.0.11.0 2019-09-20 by luispedro
 	* Add dispatchC conduit
+	* Add deprecation warning for groupC
 
 Version 0.0.10.1 2019-05-31 by luispedro
 	* Accept .zst as extension for zstandard
