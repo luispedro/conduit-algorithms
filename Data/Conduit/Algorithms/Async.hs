@@ -174,16 +174,13 @@ asyncMapEitherC maxThreads f = asyncMapC maxThreads f .| (C.awaitForever $ \case
 -- larger chunks are not split up and smaller chunks can be yielded too.
 bsConcatTo :: MonadIO m => Int -- ^ chunk hint
                             -> C.ConduitT B.ByteString [B.ByteString] m ()
-bsConcatTo chunkSize = awaitJust start
+bsConcatTo chunkSize = C.awaitForever (\v -> continue [v] (B.length v))
     where
-        start v
-            | B.length v >= chunkSize = C.yield [v] >> bsConcatTo chunkSize
-            | otherwise = continue [v] (B.length v)
-        continue chunks s = C.await >>= \case
-            Nothing -> C.yield chunks
-            Just v
-                | B.length v + s > chunkSize -> C.yield chunks >> start v
-                | otherwise -> continue (v:chunks) (s + B.length v)
+        continue chunks !s
+            | s >= chunkSize = C.yield chunks
+            | otherwise = C.await >>= maybe
+                                        (C.yield chunks)
+                                        (\v -> continue (v:chunks) (s + B.length v))
 
 untilNothing :: forall m i. (Monad m) => C.ConduitT (Maybe i) i m ()
 untilNothing = awaitJust $ \case
