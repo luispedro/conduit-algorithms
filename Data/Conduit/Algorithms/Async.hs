@@ -247,6 +247,9 @@ asyncGzipToFile = genericToFile asyncGzipTo
 -- Note that this "reads ahead" so if you do not use all the input, the Handle
 -- will probably be left at an undefined position in the file.
 --
+-- Note: unlike the ungzip conduit from 'Data.Conduit.Zlib', this function will
+-- read *all* the compressed files in the stream (not just the first).
+--
 -- See also 'asyncGzipFromFile'
 asyncGzipFrom :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m) => Handle -> C.ConduitT () B.ByteString m ()
 asyncGzipFrom h = do
