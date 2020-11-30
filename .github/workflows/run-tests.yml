@@ -1,0 +1,18 @@
+name: "Test conduit-algorithms"
+
+on: [push, pull_request]
+
+jobs:
+  test_conduit_algorithms:
+    name: Build and test conduit-algorithms
+    runs-on: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: haskell/actions/setup@v1
+        with:
+          enable-stack: true
+          stack-version: 'latest'
+          stack-no-global: true
+      - run: |
+          stack setup
+          stack test
