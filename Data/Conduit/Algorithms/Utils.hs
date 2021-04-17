@@ -75,7 +75,7 @@ groupC n = loop n []
 -- 	            ,(1, "two")
 -- 	            ,(0, "three")
 -- 	            ]
--- 	    CC.yieldMany .| dispatches [sink1, sink2]
+-- 	    CC.yieldMany input .| dispatches [sink1, sink2]
 -- @
 --
 -- Then 'sink1' will receive "one" and "three", while 'sink2' will receive "two"
