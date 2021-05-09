@@ -1,12 +1,11 @@
-{- Copyright 2017-2019 Luis Pedro Coelho
+{- Copyright 2017-2021 Luis Pedro Coelho
  - License: MIT
  -}
 {-# LANGUAGE TemplateHaskell, CPP, QuasiQuotes, FlexibleContexts, OverloadedStrings #-}
 module Main where
 
-import Test.Framework.TH
-import Test.HUnit
-import Test.Framework.Providers.HUnit
+import Test.Tasty.TH
+import Test.Tasty.HUnit
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
