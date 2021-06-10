@@ -2,3 +2,4 @@
 /dist/
 conduit-algorithms.cabal
 test_data
+stack.yaml.lock
