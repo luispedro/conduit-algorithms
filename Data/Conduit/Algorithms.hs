@@ -1,6 +1,6 @@
 {-|
 Module      : Data.Conduit.Algorithms
-Copyright   : 2013-2018 Luis Pedro Coelho
+Copyright   : 2013-2021 Luis Pedro Coelho
 License     : MIT
 Maintainer  : luis@luispedro.org
 
@@ -95,7 +95,7 @@ mergeC cs = CI.ConduitT $ \rest -> let
         norm1insert q (CI.NeedInput _ next) = norm1insert q (next ())
         norm1insert q (CI.Leftover next ()) = norm1insert q next
     in do
-        let st = map (($ CI.Done) . CI.unConduitT) cs
+        let st = map (\c -> CI.unConduitT c $ CI.Done) cs
         go =<< foldM norm1insert PQ.empty st
 
 -- | Take two sorted sources and merge them.
