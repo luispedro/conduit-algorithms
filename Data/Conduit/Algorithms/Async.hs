@@ -1,12 +1,12 @@
 {-|
 Module      : Data.Conduit.Algorithms.Async
-Copyright   : 2013-2019 Luis Pedro Coelho
+Copyright   : 2013-2021 Luis Pedro Coelho
 License     : MIT
 Maintainer  : luis@luispedro.org
 
 Higher level async processing interfaces.
 -}
-{-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP, TupleSections #-}
+{-# LANGUAGE ScopedTypeVariables, FlexibleContexts, CPP, TupleSections, LambdaCase , BangPatterns #-}
 
 module Data.Conduit.Algorithms.Async
     ( conduitPossiblyCompressedFile
@@ -127,12 +127,11 @@ asyncMapCHelper isSynchronous maxThreads f = initLoop (0 :: Int) (Seq.empty :: S
 
         -- | yield all
         yAll :: Seq.Seq (A.Async b) -> C.ConduitT a b m ()
-        yAll q
-            | Seq.null q = return ()
-            | otherwise = do
-                (r, q') <- liftIO $ retrieveResult q
-                C.yield r
-                yAll q'
+        yAll Seq.Empty = return ()
+        yAll q = do
+            (r, q') <- liftIO $ retrieveResult q
+            C.yield r
+            yAll q'
 
         loop :: Seq.Seq (A.Async b) -> C.ConduitT a b m ()
         loop q = C.await >>= \case
