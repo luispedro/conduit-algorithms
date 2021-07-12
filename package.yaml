@@ -34,10 +34,10 @@ dependencies:
   - containers
   - deepseq
   - exceptions
+  - fingertree
   - lzma-conduit
   - monad-control
   - mtl
-  - pqueue
   - resourcet
   - streaming-commons
   - stm
