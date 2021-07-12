@@ -1,4 +1,5 @@
 Unreleased
+	* Add dispatchC_ conduit
 	* Switch to fingertree package (for GHC 9)
 
 Version 0.0.11.0 2019-09-20 by luispedro

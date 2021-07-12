@@ -1,6 +1,6 @@
 {-|
 Module      : Data.Conduit.Algorithms.Utils
-Copyright   : 2013-2019 Luis Pedro Coelho
+Copyright   : 2013-2021 Luis Pedro Coelho
 License     : MIT
 Maintainer  : luis@luispedro.org
 
@@ -11,13 +11,14 @@ module Data.Conduit.Algorithms.Utils
     , enumerateC
     , groupC
     , dispatchC
+    , dispatchC_
     ) where
 
 import qualified Data.Conduit as C
 import qualified Data.Conduit.List as CL
 import           Data.Conduit ((.|))
 import           Data.Maybe (maybe)
-import           Control.Monad (unless)
+import           Control.Monad (unless, void)
 
 -- | Act on the next input (do nothing if no input). @awaitJust f@ is equivalent to
 --
@@ -89,3 +90,8 @@ dispatchC sinks = C.sequenceSinks [select i .| s | (i,s) <- zip [0..] sinks]
             if j == i || (i == n - 1 && j >= n) || (i == 0 && j < 0)
                 then Just val
                 else Nothing
+
+-- | Version of 'dispatchC' that returns ()
+dispatchC_ :: Monad m => [C.ConduitT a C.Void m ()] -> C.ConduitT (Int, a) C.Void m ()
+dispatchC_ sinks = void $ dispatchC sinks
+

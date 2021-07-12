@@ -19,7 +19,7 @@ import           Data.Conduit ((.|))
 import           Data.List (sort)
 import           System.Directory (removeFile)
 import           Control.Exception (catch, ErrorCall)
-import           Control.Monad (forM_)
+import           Control.Monad (forM_, void)
 import           Control.Monad.Trans.Resource.Internal (ResourceT)
 import qualified Control.Monad.Trans.Resource as R
 import           Control.Monad.IO.Unlift (MonadUnliftIO)
@@ -322,3 +322,4 @@ case_dispatchC = do
                  Nothing -> return n
                  Just x -> acc (n + x)
     C.runConduitPure (CC.yieldMany v .| CAlg.dispatchC [acc i | i <- [0 :: Int ..2]]) @=? [6,2,-2 :: Int]
+    C.runConduitPure (CC.yieldMany v .| CAlg.dispatchC_ [void (acc i) | i <- [0 :: Int ..2]]) @=? ()
