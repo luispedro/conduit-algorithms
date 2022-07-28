@@ -17,6 +17,7 @@ import qualified Data.Functor.Identity as FID
 import qualified Data.Vector.Storable as VS
 import           Data.Conduit ((.|))
 import           Data.List (sort)
+import           System.IO (withFile, IOMode(..))
 import           System.Directory (removeFile)
 import           Control.Exception (catch, ErrorCall)
 import           Control.Monad (forM_, void)
@@ -170,6 +171,14 @@ case_unorderedAsyncMapC = do
 case_asyncGzip :: IO ()
 case_asyncGzip = do
     C.runConduitRes (CC.yieldMany ["Hello", " ", "World"] .| CAlg.asyncGzipToFile testingFileNameGZ)
+    r <- B.concat <$> extractIO (CAlg.asyncGzipFromFile testingFileNameGZ)
+    r @?= "Hello World"
+    removeFile testingFileNameGZ
+
+case_asyncGzip_with_non_default_params :: IO ()
+case_asyncGzip_with_non_default_params = do
+    withFile testingFileNameGZ WriteMode $ \h -> do
+        C.runConduitRes (CC.yieldMany ["Hello", " ", "World"] .| CAlg.asyncGzipTo' 1 h)
     r <- B.concat <$> extractIO (CAlg.asyncGzipFromFile testingFileNameGZ)
     r @?= "Hello World"
     removeFile testingFileNameGZ

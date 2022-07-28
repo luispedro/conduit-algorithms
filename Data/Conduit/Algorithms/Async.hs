@@ -1,6 +1,6 @@
 {-|
 Module      : Data.Conduit.Algorithms.Async
-Copyright   : 2013-2021 Luis Pedro Coelho
+Copyright   : 2013-2022 Luis Pedro Coelho
 License     : MIT
 Maintainer  : luis@luispedro.org
 
@@ -16,6 +16,7 @@ module Data.Conduit.Algorithms.Async
     , asyncMapC
     , asyncMapEitherC
     , asyncGzipTo
+    , asyncGzipTo'
     , asyncGzipToFile
     , asyncGzipFrom
     , asyncGzipFromFile
@@ -24,6 +25,7 @@ module Data.Conduit.Algorithms.Async
     , asyncBzip2From
     , asyncBzip2FromFile
     , asyncXzTo
+    , asyncXzTo'
     , asyncXzToFile
     , asyncXzFrom
     , asyncXzFromFile
@@ -229,9 +231,12 @@ genericToFile to fname = C.bracketP
 --
 -- See also 'asyncGzipToFile'
 asyncGzipTo :: forall m. (MonadIO m, MonadUnliftIO m) => Handle -> C.ConduitT B.ByteString C.Void m ()
-asyncGzipTo h = genericAsyncTo gz h
+asyncGzipTo = asyncGzipTo' (-1)
+
+asyncGzipTo' :: forall m. (MonadIO m, MonadUnliftIO m) => Int -> Handle -> C.ConduitT B.ByteString C.Void m ()
+asyncGzipTo' clevel h = genericAsyncTo gz h
     where
-        gz = CZ.gzip `C.catchC` handleZLibException
+        gz = CZ.compress clevel (CZ.WindowBits 31) `C.catchC` handleZLibException
         handleZLibException = \(e :: SZ.ZlibException) ->
                                     liftIO . ioError $ mkIOError userErrorType ("Error compressing gzip stream: "++displayException e) (Just h) Nothing
 
@@ -305,6 +310,13 @@ asyncBzip2FromFile = genericFromFile asyncBzip2From
 -- See also 'asyncXzToFile'
 asyncXzTo :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m) => Handle -> C.ConduitT B.ByteString C.Void m ()
 asyncXzTo = genericAsyncTo (CX.compress Nothing)
+
+-- | A simple sink which performs lzma/xz compression in a separate thread and
+-- writes the results to `h`.
+--
+-- See also 'asyncXzToFile' and 'asyncXzTo'
+asyncXzTo' :: forall m. (MonadIO m, MonadResource m, MonadUnliftIO m) => Int -> Handle -> C.ConduitT B.ByteString C.Void m ()
+asyncXzTo' clevel = genericAsyncTo (CX.compress (Just clevel))
 
 -- | Compresses the output and writes to the given file with compression being
 -- performed in a separate thread.
@@ -412,7 +424,7 @@ withPossiblyCompressedFileOutput fname inner = withRunInIO $ \run -> do
 withPossiblyCompressedFileOutput' :: (MonadUnliftIO m, MonadResource m, MonadThrow m) => FilePath -> Handle -> C.ConduitT B.ByteString C.Void m ()
 withPossiblyCompressedFileOutput' fname
     | ".gz" `isSuffixOf` fname = asyncGzipTo
-    | ".xz" `isSuffixOf` fname = asyncXzTo
+    | ".xz" `isSuffixOf` fname = asyncXzTo' 6
     | ".bz2" `isSuffixOf` fname = asyncBzip2To
     | ".zst" `isSuffixOf` fname = asyncZstdTo 3
     | ".zstd" `isSuffixOf` fname = asyncZstdTo 3
