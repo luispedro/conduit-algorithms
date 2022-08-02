@@ -1,4 +1,4 @@
-Unreleased
+Version 0.0.13.0 2022-08-01 by luispedro
 	* Support non-default values for compression level in more compression
 	formats
 

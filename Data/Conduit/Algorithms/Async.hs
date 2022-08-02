@@ -233,6 +233,8 @@ genericToFile to fname = C.bracketP
 asyncGzipTo :: forall m. (MonadIO m, MonadUnliftIO m) => Handle -> C.ConduitT B.ByteString C.Void m ()
 asyncGzipTo = asyncGzipTo' (-1)
 
+-- | A simple sink which performs gzip compression in a separate thread and
+-- writes the results to `h` with a given compression level.
 asyncGzipTo' :: forall m. (MonadIO m, MonadUnliftIO m) => Int -> Handle -> C.ConduitT B.ByteString C.Void m ()
 asyncGzipTo' clevel h = genericAsyncTo gz h
     where
