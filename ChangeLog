@@ -1,3 +1,6 @@
+Version 0.0.14.0 (unreleased)
+	* Incorporate Data.Conduit.Lzma2 from lzma-conduit
+
 Version 0.0.13.0 2022-08-01 by luispedro
 	* Support non-default values for compression level in more compression
 	formats

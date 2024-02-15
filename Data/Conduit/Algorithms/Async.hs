@@ -47,7 +47,7 @@ import qualified Data.Conduit.Async as CA
 import qualified Data.Conduit.TQueue as CA
 import qualified Data.Conduit.List as CL
 import qualified Data.Conduit.Zlib as CZ
-import qualified Data.Conduit.Lzma as CX
+import qualified Data.Conduit.Lzma2 as CX
 import qualified Data.Streaming.Zlib as SZ
 import qualified Data.Conduit.BZlib as CBZ
 import qualified Data.Conduit.Zstd as CZstd

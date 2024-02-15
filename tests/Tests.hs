@@ -1,9 +1,10 @@
-{- Copyright 2017-2021 Luis Pedro Coelho
+{- Copyright 2017-2024 Luis Pedro Coelho
  - License: MIT
  -}
 {-# LANGUAGE TemplateHaskell, CPP, QuasiQuotes, FlexibleContexts, OverloadedStrings #-}
 module Main where
 
+import Test.Tasty
 import Test.Tasty.TH
 import Test.Tasty.HUnit
 
@@ -31,8 +32,12 @@ import qualified Data.Conduit.Algorithms.Utils as CAlg
 import qualified Data.Conduit.Algorithms.Async as CAlg
 import qualified Data.Conduit.Algorithms.Async.ByteString as CAlg
 
+import TestLZMA (tgroup_lzma)
+
 main :: IO ()
-main = $(defaultMainGenerator)
+main = defaultMain $ testGroup "All tests" [tgroup_lzma, maintests]
+
+maintests = $(testGroupGenerator)
 
 testingFileNameGZ :: FilePath
 testingFileNameGZ = "file_just_for_testing_delete_me_please.gz"

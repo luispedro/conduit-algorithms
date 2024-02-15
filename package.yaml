@@ -35,7 +35,7 @@ dependencies:
   - deepseq
   - exceptions
   - fingertree
-  - lzma-conduit
+  - lzma
   - monad-control
   - mtl
   - resourcet
@@ -52,6 +52,7 @@ when:
 
 library:
   exposed-modules:
+    - Data.Conduit.Lzma2
     - Data.Conduit.Algorithms
     - Data.Conduit.Algorithms.Utils
     - Data.Conduit.Algorithms.Async
@@ -61,7 +62,8 @@ library:
 
 tests:
   conduit-algorithms-test:
-    source-dirs: ./tests
+    source-dirs:
+      - tests
     main: Tests.hs
     dependencies:
       - conduit-algorithms

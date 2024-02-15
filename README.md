@@ -14,3 +14,5 @@ License: MIT
 
 ## Author
 Luis Pedro Coelho | [Email](mailto:luis@luispedro.org) | [Twitter](https://twitter.com/luispedrocoelho)
+
+Since version `0.0.14.0`, this includes code originally in [lzma-conduit](https://github.com/alphaHeavy/lzma-conduit) from Alpha Heavy Industries
