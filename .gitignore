@@ -1,4 +1,5 @@
 /.stack-work/
+/.stack-work-fast/
 /dist/
 conduit-algorithms.cabal
 test_data
