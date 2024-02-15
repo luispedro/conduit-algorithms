@@ -7,13 +7,13 @@ packages:
 - completed:
     hackage: lzma-clib-5.2.2@sha256:25eb43d5fd8a8ab58380f475b91fb1fa907381f8a81c8d8ba63ba428d97ae0cc,4900
     pantry-tree:
-      size: 11577
       sha256: ed5ce184eaad3b4239f86d1d478d0b5ed6a93af5aac72f19f376c1690585576d
+      size: 11577
   original:
     hackage: lzma-clib-5.2.2
 snapshots:
 - completed:
-    size: 618683
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/19/4.yaml
-    sha256: d4ee004c46ba878d2f304f5d748d493057be579192a8d148527f3ba55c9df57f
-  original: lts-19.4
+    sha256: 1b4c2669e26fa828451830ed4725e4d406acc25a1fa24fcc039465dd13d7a575
+    size: 714100
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/22/6.yaml
+  original: lts-22.6
