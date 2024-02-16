@@ -1,5 +1,7 @@
-Version 0.0.14.0 (unreleased)
-	* Incorporate Data.Conduit.Lzma2 from lzma-conduit
+Version 0.0.14.0 2024-02-16 by luispedro
+	* Data.Conduit.Lzma2: Incorporate Data.Conduit.Lzma2 (adapted from
+	lzma-conduit) instead of using the external lzma-conduit package as that
+	is no longer maintained.
 
 Version 0.0.13.0 2022-08-01 by luispedro
 	* Support non-default values for compression level in more compression
