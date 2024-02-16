@@ -6,7 +6,6 @@
 module Data.Conduit.Lzma2(compress, compressWith, decompress, decompressWith) where
 
 import qualified Codec.Compression.Lzma       as Lzma
-import           Control.Applicative          as App
 import           Control.Monad.IO.Class       (MonadIO (liftIO))
 import           Control.Monad.Trans.Resource
 import           Data.ByteString              (ByteString)
@@ -52,7 +51,7 @@ decompressWith
 decompressWith parms = do
     c <- peek
     case c of
-      Nothing -> throwM $ userError $ "Data.Conduit.Lzma.decompress: invalid empty input"
+      Nothing -> throwM $ userError "Data.Conduit.Lzma.decompress: invalid empty input"
       Just _  -> liftIO (Lzma.decompressIO parms) >>= go
   where
     go s@(Lzma.DecompressInputRequired more) = do
@@ -65,10 +64,9 @@ decompressWith parms = do
     go (Lzma.DecompressOutputAvailable output cont) = do
         yield output
         liftIO cont >>= go
-    go (Lzma.DecompressStreamEnd rest) = do
-        if B.null rest
-          then App.pure ()
-          else leftover rest
+    go (Lzma.DecompressStreamEnd rest)
+        | B.null rest = return ()
+        | otherwise   = leftover rest
     go (Lzma.DecompressStreamError err) =
         throwM $ userError $ "Data.Conduit.Lzma.decompress: error: "++prettyRet err
 
@@ -79,21 +77,20 @@ compress
   => Maybe Int -- ^ Compression level from [0..9], defaults to 6.
   -> ConduitM ByteString ByteString m ()
 compress level =
-   -- mval <- await
-   -- undefined $ fromMaybe B.empty mval
    compressWith Lzma.defaultCompressParams { Lzma.compressLevel = level' }
  where
    level' = case level of
               Nothing -> Lzma.CompressionLevel6
-              Just n  -> toEnum (max 0 (min 9 n)) -- clamp to [0..9] range
+              Just n  -> let
+                            n' = max minBound (min maxBound n) -- clamp to [minBound..maxBound] range
+                        in toEnum n'
 
 compressWith
   :: MonadIO m
   => Lzma.CompressParams
   -> ConduitM ByteString ByteString m ()
-compressWith parms = do
-    s <- liftIO (Lzma.compressIO parms)
-    go s
+compressWith parms =
+    liftIO (Lzma.compressIO parms) >>= go
   where
     go s@(Lzma.CompressInputRequired _flush more) = do
         mx <- await
@@ -105,4 +102,4 @@ compressWith parms = do
     go (Lzma.CompressOutputAvailable output cont) = do
         yield output
         liftIO cont >>= go
-    go Lzma.CompressStreamEnd = pure ()
+    go Lzma.CompressStreamEnd = return ()
