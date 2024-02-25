@@ -188,7 +188,7 @@ untilNothing = awaitJust $ \case
     Just val -> do
         C.yield val
         untilNothing
-    _ -> return ()
+    Nothing -> return ()
 
 
 genericAsyncFrom :: forall m. (MonadIO m, MonadUnliftIO m) => C.ConduitT B.ByteString B.ByteString m () -> Handle -> C.ConduitT () B.ByteString m ()
