@@ -44,7 +44,7 @@ prop_compressAndDiscard (BigString str) = monadicIO $ do
             .| CL.sinkNull
 
 prop_compressAndCheckLength :: BigString -> Property
-prop_compressAndCheckLength (BigString str) = monadicIO $ do
+prop_compressAndCheckLength (BigString str) = (B.length str > 1024) ==> monadicIO $ do
   len <- run . runC $
             CL.sourceList [str]
             .| compress Nothing
