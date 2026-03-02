@@ -224,13 +224,13 @@ genericAsyncTo tranform h = do
 
 genericFromFile :: forall m. (MonadResource m, MonadUnliftIO m) => (Handle -> C.ConduitT () B.ByteString m ()) -> FilePath -> C.ConduitT () B.ByteString m ()
 genericFromFile from fname = C.bracketP
-    (openFile fname ReadMode)
+    (openBinaryFile fname ReadMode)
     hClose
     from
 
 genericToFile :: forall m. (MonadResource m, MonadUnliftIO m) => (Handle -> C.ConduitT B.ByteString C.Void m ()) -> FilePath -> C.ConduitT B.ByteString C.Void m ()
 genericToFile to fname = C.bracketP
-    (openFile fname WriteMode)
+    (openBinaryFile fname WriteMode)
     hClose
     to
 
