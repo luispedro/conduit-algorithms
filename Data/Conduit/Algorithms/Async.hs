@@ -41,6 +41,7 @@ import qualified Data.ByteString as B
 import qualified Control.Concurrent.Async as A
 import qualified Control.Concurrent.STM.TBQueue as TQ
 import           Control.Concurrent.STM (atomically)
+import           GHC.Conc (getNumProcessors)
 
 import qualified Data.Conduit.Combinators as C
 import qualified Data.Conduit.Async as CA
@@ -92,7 +93,7 @@ import           Data.Conduit.Algorithms.Utils (awaitJust)
 --
 -- See 'unorderedAsyncMapC'
 asyncMapC :: forall a m b . (MonadIO m, NFData b) =>
-                    Int -- ^ Maximum number of worker threads
+                    Int -- ^ Maximum number of worker threads; values <= 0 use the number of processors
                     -> (a -> b) -- ^ Function to execute
                     -> C.ConduitT a b m ()
 asyncMapC = asyncMapCHelper True
@@ -104,26 +105,33 @@ asyncMapC = asyncMapCHelper True
 --
 -- See 'asyncMapC'
 unorderedAsyncMapC :: forall a m b . (MonadIO m, NFData b) =>
-                    Int -- ^ Maximum number of worker threads
+                    Int -- ^ Maximum number of worker threads; values <= 0 use the number of processors
                     -> (a -> b) -- ^ Function to execute
                     -> C.ConduitT a b m ()
 unorderedAsyncMapC = asyncMapCHelper False
 
 asyncMapCHelper  :: forall a m b . (MonadIO m, NFData b) =>
                     Bool
-                    -> Int -- ^ Maximum number of worker threads
+                    -> Int -- ^ Maximum number of worker threads; values <= 0 use the number of processors
                     -> (a -> b) -- ^ Function to execute
                     -> C.ConduitT a b m ()
-asyncMapCHelper isSynchronous maxThreads f = initLoop (0 :: Int) (Seq.empty :: Seq.Seq (A.Async b))
+asyncMapCHelper isSynchronous requestedThreads f = do
+    maxThreads <- liftIO $ normalizedThreadCount requestedThreads
+    initLoop maxThreads (0 :: Int) (Seq.empty :: Seq.Seq (A.Async b))
     where
-        initLoop :: Int -> Seq.Seq (A.Async b) -> C.ConduitT a b m ()
-        initLoop size q
+        normalizedThreadCount :: Int -> IO Int
+        normalizedThreadCount n
+            | n > 0 = pure n
+            | otherwise = getNumProcessors
+
+        initLoop :: Int -> Int -> Seq.Seq (A.Async b) -> C.ConduitT a b m ()
+        initLoop maxThreads size q
             | size == maxThreads = loop q
             | otherwise = C.await >>= \case
                 Nothing -> yAll q
                 Just v -> do
                         v' <- sched v
-                        initLoop (size + 1) (q |> v')
+                        initLoop maxThreads (size + 1) (q |> v')
         sched :: a -> C.ConduitM a b m (A.Async b)
         sched v = liftIO . A.async . evaluate . force $ f v
 

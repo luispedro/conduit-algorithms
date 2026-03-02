@@ -168,6 +168,13 @@ case_asyncMap = do
     vals <- extractIO (CC.yieldMany [0..10] .| CAlg.asyncMapC 3 (+ (1:: Int)))
     vals @?= [1..11]
 
+case_asyncMap_defaultThreadCount :: IO ()
+case_asyncMap_defaultThreadCount = do
+    vals0 <- extractIO (CC.yieldMany [0..10] .| CAlg.asyncMapC 0 (+ (1 :: Int)))
+    valsNeg <- extractIO (CC.yieldMany [0..10] .| CAlg.asyncMapC (-1) (+ (1 :: Int)))
+    vals0 @?= [1..11]
+    valsNeg @?= [1..11]
+
 case_unorderedAsyncMapC :: IO ()
 case_unorderedAsyncMapC = do
     vals <- extractIO (CC.yieldMany [0..10] .| CAlg.unorderedAsyncMapC 3 (+ (1:: Int)))
