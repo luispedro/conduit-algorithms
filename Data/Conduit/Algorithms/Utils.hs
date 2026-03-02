@@ -48,7 +48,8 @@ enumerateC = enumerateC' 0
 -- | This function is deprecated; use 'Data.Conduit.List.chunksOf'
 --
 -- groupC yields the input as groups of 'n' elements. If the input is not a
--- multiple of 'n', the last element will be incomplete
+-- multiple of 'n', the last element will be incomplete. Values smaller than 1
+-- are treated as 1.
 --
 -- Example:
 --
@@ -59,9 +60,10 @@ enumerateC = enumerateC' 0
 -- results in @[ [0,1,2], [3,4,5], [6,7,8], [9, 10] ]@
 --
 groupC :: (Monad m) => Int -> C.ConduitT a [a] m ()
-groupC n = loop n []
+groupC n = loop groupSize []
     where
-        loop 0 ps = C.yield (reverse ps) >> loop n []
+        groupSize = max 1 n
+        loop 0 ps = C.yield (reverse ps) >> loop groupSize []
         loop c ps = C.await >>= \case
             Nothing -> unless (null ps) $ C.yield (reverse ps)
             Just p -> loop (c-1) (p:ps)
@@ -94,4 +96,3 @@ dispatchC sinks = C.sequenceSinks [select i .| s | (i,s) <- zip [0..] sinks]
 -- | Version of 'dispatchC' that returns ()
 dispatchC_ :: Monad m => [C.ConduitT a C.Void m ()] -> C.ConduitT (Int, a) C.Void m ()
 dispatchC_ sinks = void $ dispatchC sinks
-

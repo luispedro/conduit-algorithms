@@ -155,6 +155,11 @@ case_groupC :: Assertion
 case_groupC = shouldProduce [[0,1,2], [3,4,5], [6,7,8], [9, 10 :: Int]] $
                             CC.yieldMany [0..10] .| CAlg.groupC 3
 
+case_groupC_non_positive_size :: Assertion
+case_groupC_non_positive_size = do
+    extract (CC.yieldMany [0..2 :: Int] .| CAlg.groupC 0) @?= [[0], [1], [2]]
+    extract (CC.yieldMany [0..2 :: Int] .| CAlg.groupC (-5)) @?= [[0], [1], [2]]
+
 case_enumerateC :: Assertion
 case_enumerateC = shouldProduce [(0,'z'), (1,'o'), (2,'t')] $
                             CC.yieldMany ("zot" :: String) .| CAlg.enumerateC
