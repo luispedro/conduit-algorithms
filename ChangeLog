@@ -1,3 +1,10 @@
+Next version
+	* asyncMapC and unorderedAsyncMapC now use the number of available
+	processors when passed a thread count less than or equal to zero.
+	* groupC now treats any group size smaller than one as one.
+	* Open compressed files in binary mode for the async *FromFile/*ToFile
+	helpers.
+
 Version 0.0.14.0 2024-02-16 by luispedro
 	* Data.Conduit.Lzma2: Incorporate Data.Conduit.Lzma2 (adapted from
 	lzma-conduit) instead of using the external lzma-conduit package as that

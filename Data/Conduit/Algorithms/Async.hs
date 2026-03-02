@@ -80,6 +80,12 @@ import           Data.Conduit.Algorithms.Utils (awaitJust)
 -- structure is deeply evaluated) to ensure that the computation is fully
 -- evaluated in the worker thread.
 --
+-- Once an element has been scheduled onto a worker thread, its computation may
+-- still complete even if downstream stops consuming results early. In other
+-- words, this conduit may perform some extra pure work relative to what is
+-- eventually demanded. Callers should therefore avoid passing functions with
+-- externally visible side effects.
+--
 -- Note that there is some overhead in threading. It is often a good idea to
 -- build larger chunks of input before passing it to 'asyncMapC' to amortize
 -- the costs. That is, when @f@ is not a lot of work, instead of @asyncMapC f@,
@@ -166,7 +172,9 @@ asyncMapCHelper isSynchronous requestedThreads f = do
 -- error (as a 'Left'). When the first error is seen, it 'throwError's in the
 -- main monad. Note that 'f' may be evaluated for arguments beyond the first
 -- error (as some threads may be running in the background and already
--- processing elements after the first error).
+-- processing elements after the first error). As with 'asyncMapC', this means
+-- some extra pure work may be performed compared to the results ultimately
+-- consumed.
 --
 -- See 'asyncMapC'
 asyncMapEitherC :: forall a m b e . (MonadIO m, NFData b, NFData e, MonadError e m) => Int -> (a -> Either e b) -> C.ConduitT a b m ()
